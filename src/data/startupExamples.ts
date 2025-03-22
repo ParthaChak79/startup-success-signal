@@ -59,6 +59,44 @@ const unicornStartups: StartupExample[] = [
       capitalEfficiency: 0.6,
       distributionAdvantage: 0.6
     }
+  },
+  {
+    name: 'Zoom',
+    score: 0.7605,
+    description: 'Video conferencing platform. Succeeded with a simple, reliable product and perfect market timing.',
+    category: 'unicorn',
+    factors: {
+      marketSize: 0.8,
+      barrierToEntry: 0.5,
+      defensibility: 0.6,
+      insightFactor: 0.7,
+      complexity: 0.6,
+      riskFactor: 0.4,
+      teamFactor: 0.8,
+      marketTiming: 0.9,
+      competitionIntensity: 0.7,
+      capitalEfficiency: 0.8,
+      distributionAdvantage: 0.7
+    }
+  },
+  {
+    name: 'DoorDash',
+    score: 0.7293,
+    description: 'Food delivery service that leveraged technology to optimize logistics and delivery experience.',
+    category: 'unicorn',
+    factors: {
+      marketSize: 0.8,
+      barrierToEntry: 0.4,
+      defensibility: 0.6,
+      insightFactor: 0.6,
+      complexity: 0.6,
+      riskFactor: 0.5,
+      teamFactor: 0.7,
+      marketTiming: 0.8,
+      competitionIntensity: 0.8,
+      capitalEfficiency: 0.5,
+      distributionAdvantage: 0.7
+    }
   }
 ];
 
@@ -118,6 +156,44 @@ const mediumStartups: StartupExample[] = [
       marketTiming: 0.7,
       competitionIntensity: 0.5,
       capitalEfficiency: 0.8,
+      distributionAdvantage: 0.7
+    }
+  },
+  {
+    name: 'Buffer',
+    score: 0.6123,
+    description: 'Social media management platform. Grew steadily with transparent company culture and remote-first approach.',
+    category: 'medium',
+    factors: {
+      marketSize: 0.6,
+      barrierToEntry: 0.3,
+      defensibility: 0.4,
+      insightFactor: 0.6,
+      complexity: 0.4,
+      riskFactor: 0.3,
+      teamFactor: 0.7,
+      marketTiming: 0.7,
+      competitionIntensity: 0.7,
+      capitalEfficiency: 0.7,
+      distributionAdvantage: 0.6
+    }
+  },
+  {
+    name: 'ConvertKit',
+    score: 0.5938,
+    description: 'Email marketing platform for creators. Found success by focusing on a specific niche audience.',
+    category: 'medium',
+    factors: {
+      marketSize: 0.5,
+      barrierToEntry: 0.3,
+      defensibility: 0.4,
+      insightFactor: 0.6,
+      complexity: 0.5,
+      riskFactor: 0.4,
+      teamFactor: 0.6,
+      marketTiming: 0.7,
+      competitionIntensity: 0.6,
+      capitalEfficiency: 0.7,
       distributionAdvantage: 0.7
     }
   }
@@ -180,6 +256,44 @@ const failedStartups: StartupExample[] = [
       competitionIntensity: 0.6,
       capitalEfficiency: 0.1,
       distributionAdvantage: 0.5
+    }
+  },
+  {
+    name: 'Quibi',
+    score: 0.3452,
+    description: 'Mobile-only streaming platform with short-form content. Failed despite $1.75B in funding due to poor product-market fit.',
+    category: 'failed',
+    factors: {
+      marketSize: 0.6,
+      barrierToEntry: 0.5,
+      defensibility: 0.4,
+      insightFactor: 0.3,
+      complexity: 0.6,
+      riskFactor: 0.7,
+      teamFactor: 0.7,
+      marketTiming: 0.5,
+      competitionIntensity: 0.8,
+      capitalEfficiency: 0.2,
+      distributionAdvantage: 0.4
+    }
+  },
+  {
+    name: 'Pets.com',
+    score: 0.2600,
+    description: 'Online pet supplies retailer during the dot-com bubble. Failed due to high costs and early e-commerce infrastructure.',
+    category: 'failed',
+    factors: {
+      marketSize: 0.6,
+      barrierToEntry: 0.2,
+      defensibility: 0.1,
+      insightFactor: 0.4,
+      complexity: 0.5,
+      riskFactor: 0.7,
+      teamFactor: 0.4,
+      marketTiming: 0.2,
+      competitionIntensity: 0.6,
+      capitalEfficiency: 0.1,
+      distributionAdvantage: 0.3
     }
   }
 ];
