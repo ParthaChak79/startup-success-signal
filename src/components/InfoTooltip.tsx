@@ -38,7 +38,7 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ content }) => {
       
       {isVisible && (
         <div 
-          className="absolute z-50 right-0 top-full mt-2 w-64 p-3 bg-popover text-popover-foreground text-sm rounded-lg shadow-lg border border-border/60 backdrop-blur-md animate-fade-in"
+          className="absolute z-50 left-full ml-2 top-0 w-64 p-3 bg-popover text-popover-foreground text-sm rounded-lg shadow-lg border border-border/60 backdrop-blur-md animate-fade-in"
           onMouseEnter={showTooltip}
           onMouseLeave={hideTooltip}
         >

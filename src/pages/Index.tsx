@@ -131,7 +131,7 @@ const Index = () => {
             <div className="flex flex-col lg:flex-row gap-8">
               {/* Sliders Column */}
               <div className="w-full lg:w-3/4 glass-panel rounded-xl p-6">
-                <div className="grid grid-cols-1 gap-x-8 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   {factorKeys.map((factor) => (
                     <SliderInput
                       key={factor}
