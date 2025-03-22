@@ -164,16 +164,29 @@ const Index = () => {
                 <div className="glass-panel rounded-xl p-6">
                   <h3 className="text-lg font-medium mb-4">Compare With Examples</h3>
                   <div className="space-y-3">
+                    {/* Unicorn Startups */}
                     <StartupCard
                       startup={startupExamples.unicorn[0]}
                       onSelect={loadStartupExample}
                     />
                     <StartupCard
+                      startup={startupExamples.unicorn[1]}
+                      onSelect={loadStartupExample}
+                    />
+                    
+                    {/* Medium Startups */}
+                    <StartupCard
                       startup={startupExamples.medium[0]}
                       onSelect={loadStartupExample}
                     />
+                    
+                    {/* Failed Startups */}
                     <StartupCard
                       startup={startupExamples.failed[0]}
+                      onSelect={loadStartupExample}
+                    />
+                    <StartupCard
+                      startup={startupExamples.failed[1]}
                       onSelect={loadStartupExample}
                     />
                   </div>
