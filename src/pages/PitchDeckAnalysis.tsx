@@ -132,7 +132,7 @@ const PitchDeckAnalysis = () => {
                   Drag and drop your PDF here or click to browse
                 </p>
                 <label>
-                  <Button as="span" className="cursor-pointer">
+                  <Button className="cursor-pointer">
                     <Upload className="mr-2 h-4 w-4" />
                     Browse Files
                   </Button>
