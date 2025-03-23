@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -8,7 +8,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -39,6 +42,12 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
   const previousPage = () => changePage(-1);
   const nextPage = () => changePage(1);
 
+  // Memoize the options to prevent unnecessary rerenders
+  const options = useMemo(() => ({
+    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    cMapPacked: true
+  }), []);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto flex items-center justify-center relative">
@@ -52,10 +61,7 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
           file={fileUrl}
           onLoadSuccess={onDocumentLoadSuccess}
           loading={<Skeleton className="h-[250px] w-[180px]" />}
-          options={{ 
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-            cMapPacked: true 
-          }}
+          options={options}
           className="max-h-full"
         >
           <Page 
