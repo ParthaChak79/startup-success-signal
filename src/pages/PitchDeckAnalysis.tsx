@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,6 +20,7 @@ const PitchDeckAnalysis = () => {
   const [factors, setFactors] = useState<SVIFactors | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -47,6 +47,45 @@ const PitchDeckAnalysis = () => {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0];
+      
+      // Check if the file is a PDF
+      if (droppedFile.type !== 'application/pdf') {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF file",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setFile(droppedFile);
+      const url = URL.createObjectURL(droppedFile);
+      setFileUrl(url);
+      
+      // Reset analysis state
+      setFactors(null);
+      setScore(null);
+      setAnalysis(null);
+    }
+  };
+
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleRemoveFile = () => {
     if (fileUrl) {
       URL.revokeObjectURL(fileUrl);
@@ -56,6 +95,11 @@ const PitchDeckAnalysis = () => {
     setFactors(null);
     setScore(null);
     setAnalysis(null);
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleAnalyze = async () => {
@@ -126,23 +170,27 @@ const PitchDeckAnalysis = () => {
             </p>
             
             {!file ? (
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <div 
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-accent/10 transition-colors"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={handleBrowseClick}
+              >
                 <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="mb-4 text-muted-foreground">
                   Drag and drop your PDF here or click to browse
                 </p>
-                <label>
-                  <Button className="cursor-pointer">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Browse Files
-                  </Button>
-                  <input 
-                    type="file" 
-                    accept=".pdf" 
-                    onChange={handleFileChange} 
-                    className="hidden" 
-                  />
-                </label>
+                <Button>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Browse Files
+                </Button>
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept=".pdf,application/pdf" 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                />
               </div>
             ) : (
               <div className="space-y-4">
