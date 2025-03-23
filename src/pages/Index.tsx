@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import SliderInput from '@/components/SliderInput';
 import ResultCard from '@/components/ResultCard';
@@ -14,9 +15,11 @@ import {
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
 import { toast } from '@/components/ui/use-toast';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [factors, setFactors] = useState<SVIFactors>(defaultFactors);
   const [score, setScore] = useState<number>(0);
   const [calculating, setCalculating] = useState<boolean>(false);
@@ -97,6 +100,16 @@ const Index = () => {
             startup potential by measuring the balance between opportunity factors and 
             execution challenges. It produces a score from 0 to 1 using a sophisticated formula.
           </p>
+          
+          <div className="mt-6">
+            <Button 
+              onClick={() => navigate('/pitch-deck-analysis')}
+              className="flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Upload Pitch Deck
+            </Button>
+          </div>
         </header>
 
         {/* Main tabs */}
