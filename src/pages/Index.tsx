@@ -77,7 +77,8 @@ const Index = () => {
     'marketTiming',
     'competitionIntensity',
     'capitalEfficiency',
-    'distributionAdvantage'
+    'distributionAdvantage',
+    'businessModelViability'  // Added the missing businessModelViability factor
   ];
 
   return (
