@@ -7,8 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with a reliable CDN source that matches our package version
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -60,6 +60,7 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
           loading={<Skeleton className="h-[250px] w-[180px]" />}
           options={options}
           className="max-h-full"
+          error={<div className="text-destructive text-center p-4">Failed to load PDF. Please try again with a different file.</div>}
         >
           <Page 
             pageNumber={pageNumber}
