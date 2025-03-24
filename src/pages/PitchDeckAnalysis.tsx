@@ -1,9 +1,10 @@
+
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Upload, FileText, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Trash2, Eye, EyeOff } from 'lucide-react';
 import { calculateSVI, type SVIFactors } from '@/utils/sviCalculator';
 import { defaultFactors } from '@/data/startupExamples';
 import ResultCard from '@/components/ResultCard';
@@ -20,6 +21,8 @@ const PitchDeckAnalysis = () => {
   const [factors, setFactors] = useState<SVIFactors | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [showExtractedText, setShowExtractedText] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,6 +47,7 @@ const PitchDeckAnalysis = () => {
       setFactors(null);
       setScore(null);
       setAnalysis(null);
+      setExtractedText(null);
     }
   };
 
@@ -77,6 +81,7 @@ const PitchDeckAnalysis = () => {
       setFactors(null);
       setScore(null);
       setAnalysis(null);
+      setExtractedText(null);
     }
   };
 
@@ -95,6 +100,7 @@ const PitchDeckAnalysis = () => {
     setFactors(null);
     setScore(null);
     setAnalysis(null);
+    setExtractedText(null);
     
     // Reset the file input
     if (fileInputRef.current) {
@@ -123,6 +129,7 @@ const PitchDeckAnalysis = () => {
       };
       
       setFactors(analyzedFactors);
+      setExtractedText(result.extractedText);
       const calculatedScore = calculateSVI(analyzedFactors);
       setScore(calculatedScore);
       setAnalysis(result.analysis);
@@ -142,6 +149,10 @@ const PitchDeckAnalysis = () => {
       setAnalyzing(false);
       setProgress(100);
     }
+  };
+
+  const toggleExtractedText = () => {
+    setShowExtractedText(prev => !prev);
   };
 
   return (
@@ -254,6 +265,30 @@ const PitchDeckAnalysis = () => {
                   <Card className="p-4 glass-panel">
                     <h3 className="text-lg font-medium mb-2">Analysis Summary</h3>
                     <p className="text-sm text-muted-foreground">{analysis}</p>
+                  </Card>
+                )}
+                
+                {extractedText && (
+                  <Card className="p-4 glass-panel">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-lg font-medium">Extracted Content</h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={toggleExtractedText}
+                      >
+                        {showExtractedText ? (
+                          <><EyeOff className="h-4 w-4 mr-2" /> Hide</>
+                        ) : (
+                          <><Eye className="h-4 w-4 mr-2" /> Show</>
+                        )}
+                      </Button>
+                    </div>
+                    {showExtractedText && (
+                      <div className="mt-2 text-sm text-muted-foreground max-h-[200px] overflow-y-auto p-2 bg-accent/50 rounded-md">
+                        {extractedText}
+                      </div>
+                    )}
                   </Card>
                 )}
               </div>
