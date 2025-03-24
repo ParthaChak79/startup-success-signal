@@ -1,4 +1,3 @@
-
 export interface SVIFactors {
   marketSize: number;
   barrierToEntry: number;
@@ -11,6 +10,7 @@ export interface SVIFactors {
   competitionIntensity: number;
   capitalEfficiency: number;
   distributionAdvantage: number;
+  businessModelViability: number;
 }
 
 export const calculateSVI = (factors: SVIFactors): number => {
@@ -25,26 +25,28 @@ export const calculateSVI = (factors: SVIFactors): number => {
     marketTiming,
     competitionIntensity,
     capitalEfficiency,
-    distributionAdvantage
+    distributionAdvantage,
+    businessModelViability
   } = factors;
 
-  // Calculate S component of the formula
-  const S = (
-    marketSize + 
-    (barrierToEntry * defensibility * 1.2) + 
-    (2.4 * insightFactor) - 
-    (0.8 * complexity) - 
-    riskFactor + 
-    teamFactor + 
-    (capitalEfficiency * 0.8) + 
-    (distributionAdvantage * 0.8)
-  ) * marketTiming - (competitionIntensity * 0.8);
+  // Calculate weighted sum using updated equation
+  const weighted_sum = (
+    1.2 * marketSize +
+    1.0 * barrierToEntry +
+    1.2 * defensibility +
+    1.1 * insightFactor +
+    0.8 * (1 - complexity) +
+    1.3 * (1 - riskFactor) +
+    1.2 * teamFactor +
+    1.1 * marketTiming +
+    0.9 * (1 - competitionIntensity) +
+    1.0 * capitalEfficiency +
+    1.1 * distributionAdvantage +
+    1.3 * businessModelViability
+  );
 
-  // Calculate k component
-  const k = (S - 0.75) / 0.8125;
-
-  // Final SVI calculation with sigmoid function
-  const svi = 1 / (1 + Math.exp(-k));
+  // Calculate final SVI score by dividing by 12
+  const svi = weighted_sum / 12;
 
   // Ensure the value is between 0 and 1
   return Math.max(0, Math.min(1, svi));
@@ -140,6 +142,14 @@ export const getFactorText = (factor: keyof SVIFactors, value: number): string =
     return 'Exceptional distribution advantage (existing channels, high virality)';
   }
   
+  if (factor === 'businessModelViability') {
+    if (value <= 0.2) return 'Flawed or unsustainable model';
+    if (value <= 0.4) return 'Weak economics';
+    if (value <= 0.6) return 'Standard but challenging';
+    if (value <= 0.8) return 'Strong unit economics';
+    return 'Exceptional business model';
+  }
+  
   return 'Unknown factor';
 };
 
@@ -155,7 +165,8 @@ export const getLabelForFactor = (factor: keyof SVIFactors): string => {
     marketTiming: 'Market Timing',
     competitionIntensity: 'Competition Intensity',
     capitalEfficiency: 'Capital Efficiency',
-    distributionAdvantage: 'Distribution Advantage'
+    distributionAdvantage: 'Distribution Advantage',
+    businessModelViability: 'Business Model Viability'
   };
   
   return labels[factor];
@@ -173,14 +184,14 @@ export const getTooltipForFactor = (factor: keyof SVIFactors): string => {
     marketTiming: 'Whether the market is ready for your solution. Too early means educating customers; too late means fighting established competitors.',
     competitionIntensity: 'The number and strength of competitors in your space. Higher intensity means more resources needed to win.',
     capitalEfficiency: 'How efficiently you can convert investment capital into growth and profitability. Better efficiency means less dilution.',
-    distributionAdvantage: 'Your ability to efficiently reach and acquire customers. Strong distribution advantages lower customer acquisition costs.'
+    distributionAdvantage: 'Your ability to efficiently reach and acquire customers. Strong distribution advantages lower customer acquisition costs.',
+    businessModelViability: 'The fundamental economic viability of your business model, including margins, scalability, and sustainability.'
   };
   
   return tooltips[factor];
 };
 
 export const getFactorDescription = (factor: keyof SVIFactors, value: number): string => {
-  // Market size descriptions
   if (factor === 'marketSize') {
     if (value <= 0.2) return 'Very small market opportunity limiting growth potential.';
     if (value <= 0.4) return 'Modest market size with limited growth ceiling.';
@@ -189,7 +200,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Enormous market potential allowing for extensive growth.';
   }
 
-  // Barrier to entry descriptions
   if (factor === 'barrierToEntry') {
     if (value <= 0.2) return 'Anyone can easily enter this market with minimal investment.';
     if (value <= 0.4) return 'Some investment needed but relatively easy to copy.';
@@ -198,7 +208,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Very difficult for new competitors to enter this space.';
   }
 
-  // Defensibility descriptions
   if (factor === 'defensibility') {
     if (value <= 0.2) return 'No meaningful way to defend position once established.';
     if (value <= 0.4) return 'Limited ability to protect position from competitors.';
@@ -207,7 +216,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Extremely difficult for competitors to displace once established.';
   }
 
-  // Insight factor descriptions
   if (factor === 'insightFactor') {
     if (value <= 0.2) return 'Common idea that many others are likely executing on.';
     if (value <= 0.4) return 'Small improvement on existing solutions in the market.';
@@ -216,7 +224,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Transformative insight creating new market category.';
   }
 
-  // Complexity descriptions
   if (factor === 'complexity') {
     if (value <= 0.2) return 'Straightforward solution with minimal moving parts.';
     if (value <= 0.4) return 'Relatively simple implementation with few components.';
@@ -225,7 +232,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Highly complex with numerous technical challenges.';
   }
 
-  // Risk factor descriptions
   if (factor === 'riskFactor') {
     if (value <= 0.2) return 'Very low risk profile with proven approaches.';
     if (value <= 0.4) return 'Modest risk with established patterns to follow.';
@@ -234,7 +240,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Extreme risk profile with major uncertainties.';
   }
 
-  // Team factor descriptions
   if (factor === 'teamFactor') {
     if (value <= 0.2) return 'Team lacks essential skills or relevant experience.';
     if (value <= 0.4) return 'Basic capability but missing important expertise.';
@@ -243,7 +248,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'World-class team with exceptional domain expertise.';
   }
 
-  // Market timing descriptions
   if (factor === 'marketTiming') {
     if (value <= 0.2) return 'Market not ready, requiring extensive education.';
     if (value <= 0.4) return 'Early stage market with adoption challenges.';
@@ -252,7 +256,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Mature market with established buying patterns.';
   }
 
-  // Competition intensity descriptions
   if (factor === 'competitionIntensity') {
     if (value <= 0.2) return 'Virtually no direct competition in this space.';
     if (value <= 0.4) return 'Limited competition with few established players.';
@@ -261,7 +264,6 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Extremely competitive market dominated by established players.';
   }
 
-  // Capital efficiency descriptions
   if (factor === 'capitalEfficiency') {
     if (value <= 0.2) return 'Requires massive capital investment before revenue.';
     if (value <= 0.4) return 'Significant funding needed for extended period.';
@@ -270,13 +272,20 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
     return 'Highly efficient capital utilization with fast returns.';
   }
 
-  // Distribution advantage descriptions
   if (factor === 'distributionAdvantage') {
     if (value <= 0.2) return 'Very difficult to reach target customers cost-effectively.';
     if (value <= 0.4) return 'Challenging distribution requiring significant resources.';
     if (value <= 0.6) return 'Standard distribution channels with average CAC.';
     if (value <= 0.8) return 'Effective distribution with below-average acquisition costs.';
     return 'Exceptional distribution advantages with viral potential.';
+  }
+
+  if (factor === 'businessModelViability') {
+    if (value <= 0.2) return 'Fundamentally flawed business model with unsustainable unit economics.';
+    if (value <= 0.4) return 'Weak economic model with significant challenges to profitability.';
+    if (value <= 0.6) return 'Standard business model with typical industry margins and challenges.';
+    if (value <= 0.8) return 'Strong unit economics with clear path to profitability and scale.';
+    return 'Exceptional business model with outstanding margins and network effects.';
   }
 
   return '';

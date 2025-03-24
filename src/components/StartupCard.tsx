@@ -18,6 +18,7 @@ export interface StartupExample {
     competitionIntensity: number;
     capitalEfficiency: number;
     distributionAdvantage: number;
+    businessModelViability: number;
   };
 }
 
