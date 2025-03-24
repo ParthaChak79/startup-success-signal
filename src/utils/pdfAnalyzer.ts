@@ -1,9 +1,8 @@
-
 import { pdfjs } from 'react-pdf';
 import { type SVIFactors } from './sviCalculator';
 
-// Initialize pdfjs worker with the same configuration as the PdfViewer component
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Use the same worker configuration as in PdfViewer
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface AnalysisResult {
   factors: Partial<SVIFactors>;
