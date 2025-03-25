@@ -23,11 +23,13 @@ const PitchDeckAnalysis = () => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [showExtractedText, setShowExtractedText] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+      setUploadError(null);
       
       // Check if the file is a PDF
       if (selectedFile.type !== 'application/pdf') {
@@ -36,10 +38,17 @@ const PitchDeckAnalysis = () => {
           description: "Please upload a PDF file",
           variant: "destructive",
         });
+        setUploadError("Invalid file type. Please upload a PDF file.");
         return;
       }
       
       setFile(selectedFile);
+      
+      // Revoke any previous object URL to avoid memory leaks
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+      
       const url = URL.createObjectURL(selectedFile);
       setFileUrl(url);
       
@@ -59,6 +68,7 @@ const PitchDeckAnalysis = () => {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    setUploadError(null);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
@@ -70,10 +80,17 @@ const PitchDeckAnalysis = () => {
           description: "Please upload a PDF file",
           variant: "destructive",
         });
+        setUploadError("Invalid file type. Please upload a PDF file.");
         return;
       }
       
       setFile(droppedFile);
+      
+      // Revoke any previous object URL to avoid memory leaks
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+      
       const url = URL.createObjectURL(droppedFile);
       setFileUrl(url);
       
@@ -101,6 +118,7 @@ const PitchDeckAnalysis = () => {
     setScore(null);
     setAnalysis(null);
     setExtractedText(null);
+    setUploadError(null);
     
     // Reset the file input
     if (fileInputRef.current) {
@@ -109,10 +127,18 @@ const PitchDeckAnalysis = () => {
   };
 
   const handleAnalyze = async () => {
-    if (!file) return;
+    if (!file) {
+      toast({
+        title: "No file selected",
+        description: "Please upload a PDF file first",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setAnalyzing(true);
     setProgress(0);
+    setUploadError(null);
     
     try {
       // Start analysis with progress updates
@@ -140,9 +166,10 @@ const PitchDeckAnalysis = () => {
       });
     } catch (error) {
       console.error('Error analyzing PDF:', error);
+      setUploadError("Failed to analyze the PDF. The file might be corrupted or password-protected.");
       toast({
         title: "Analysis Failed",
-        description: "There was an error analyzing your pitch deck. Please try again.",
+        description: "There was an error analyzing your pitch deck. Please try again with a different file.",
         variant: "destructive",
       });
     } finally {

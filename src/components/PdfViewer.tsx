@@ -7,8 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Configure PDF.js worker with a reliable CDN source that matches our package version
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Configure PDF.js worker with a direct and explicit URL to ensure reliable loading
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -18,15 +18,24 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
     setPageNumber(1);
     setLoading(true);
+    setError(false);
   }, [fileUrl]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setLoading(false);
+    setError(false);
+  };
+
+  const onDocumentLoadError = () => {
+    setError(true);
+    setLoading(false);
+    console.error("Failed to load PDF document:", fileUrl);
   };
 
   const changePage = (offset: number) => {
@@ -41,8 +50,9 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
 
   // Memoize the options to prevent unnecessary rerenders
   const options = useMemo(() => ({
-    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-    cMapPacked: true
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`
   }), []);
 
   return (
@@ -57,22 +67,30 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
         <Document
           file={fileUrl}
           onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={onDocumentLoadError}
           loading={<Skeleton className="h-[250px] w-[180px]" />}
           options={options}
           className="max-h-full"
-          error={<div className="text-destructive text-center p-4">Failed to load PDF. Please try again with a different file.</div>}
+          error={
+            <div className="text-destructive text-center p-4">
+              Failed to load PDF. Please try again with a different file.
+              <p className="text-sm mt-2">The PDF may be corrupted or using unsupported features.</p>
+            </div>
+          }
         >
-          <Page 
-            pageNumber={pageNumber}
-            width={300}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            className="pdf-page"
-          />
+          {!error && (
+            <Page 
+              pageNumber={pageNumber}
+              width={300}
+              renderTextLayer={true}
+              renderAnnotationLayer={false}
+              className="pdf-page"
+            />
+          )}
         </Document>
       </div>
       
-      {numPages && numPages > 1 && (
+      {numPages && numPages > 1 && !error && (
         <div className="flex items-center justify-between p-2 border-t">
           <Button 
             variant="ghost" 

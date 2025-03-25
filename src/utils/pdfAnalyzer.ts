@@ -2,8 +2,8 @@
 import { pdfjs } from 'react-pdf';
 import { type SVIFactors } from './sviCalculator';
 
-// Use the same worker configuration as in PdfViewer
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Use the same worker configuration as in PdfViewer to ensure consistency
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface AnalysisResult {
   factors: Partial<SVIFactors>;
@@ -23,7 +23,14 @@ export const analyzePitchDeck = async (
     
     // Load the PDF document
     const fileData = await readFileAsArrayBuffer(file);
-    const pdf = await pdfjs.getDocument({ data: fileData }).promise;
+    const loadingTask = pdfjs.getDocument({
+      data: fileData,
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`
+    });
+    
+    const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     
     progressCallback(20);
