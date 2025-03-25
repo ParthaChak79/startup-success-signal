@@ -26,13 +26,22 @@ const PitchDeckAnalysis = () => {
     setScore(calculatedScore);
     
     // Generate a simple analysis based on the score
-    const analysisText = generateAnalysis(calculatedScore);
+    let analysisText = generateAnalysis(calculatedScore);
+    
+    // Check if all parameters are zero, which means it's not a pitch deck
+    const allZeros = Object.values(parameters).every(val => val === 0);
+    if (allZeros) {
+      analysisText = "This doesn't appear to be a startup pitch deck. No relevant information was found to calculate a meaningful score.";
+    }
+    
     setAnalysis(analysisText);
     
     // Show toast with the score
     toast({
       title: "Analysis Complete",
-      description: `Your pitch deck has been analyzed with a SVI score of ${calculatedScore.toFixed(4)}`,
+      description: allZeros 
+        ? "No pitch deck information found" 
+        : `Your pitch deck has been analyzed with a SVI score of ${calculatedScore.toFixed(4)}`,
     });
   };
   
@@ -43,8 +52,10 @@ const PitchDeckAnalysis = () => {
       return "Your startup shows good potential. The pitch deck presents a clear value proposition and market opportunity. Focus on strengthening your competitive advantage and business model validation.";
     } else if (score >= 0.4) {
       return "Your startup has moderate potential. The pitch deck needs improvement in key areas such as market sizing, business model clarity, or competitive positioning. Consider refining your strategy.";
-    } else {
+    } else if (score > 0) {
       return "Your startup faces significant challenges. The pitch deck needs substantial improvement across multiple areas. Consider rethinking your core value proposition and market fit.";
+    } else {
+      return "No relevant pitch deck information was found in the document. Please make sure you're uploading a startup pitch deck.";
     }
   };
 
@@ -75,7 +86,7 @@ const PitchDeckAnalysis = () => {
               <h2 className="text-xl font-semibold mb-4">Upload Your Pitch Deck</h2>
               <p className="text-muted-foreground mb-6">
                 Upload your startup pitch deck as a PDF file and we'll analyze it to calculate your 
-                Startup Viability Index score.
+                Startup Viability Index score. If the document isn't a pitch deck, all scores will be zero.
               </p>
               
               <FileUpload onFileProcessed={handleFileProcessed} />

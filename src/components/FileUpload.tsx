@@ -100,35 +100,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
     }
   };
 
-  // Generate fallback parameters if analysis fails
-  const generateParametersFromFile = (file: File): SVIFactors => {
-    const fileNameSum = Array.from(file.name).reduce(
-      (sum, char, i) => sum + char.charCodeAt(0) * (i + 1), 0
-    );
-    
-    const fileSizeSeed = file.size % 1000 / 1000;
-    
-    const generateValue = (seed1: number, seed2: number, min = 0.3, max = 0.9): number => {
-      const value = ((seed1 * 13 + seed2 * 17) % 100) / 100;
-      return min + value * (max - min);
-    };
-
-    return {
-      marketSize: generateValue(fileNameSum, fileSizeSeed, 0.3, 0.9),
-      barrierToEntry: generateValue(fileNameSum * 2, fileSizeSeed, 0.2, 0.7),
-      defensibility: generateValue(fileNameSum * 3, fileSizeSeed, 0.2, 0.8),
-      insightFactor: generateValue(fileNameSum * 4, fileSizeSeed, 0.3, 0.8),
-      complexity: generateValue(fileNameSum * 5, fileSizeSeed, 0.3, 0.7),
-      riskFactor: generateValue(fileNameSum * 6, fileSizeSeed, 0.4, 0.7),
-      teamFactor: generateValue(fileNameSum * 7, fileSizeSeed, 0.4, 0.9),
-      marketTiming: generateValue(fileNameSum * 8, fileSizeSeed, 0.3, 0.7),
-      competitionIntensity: generateValue(fileNameSum * 9, fileSizeSeed, 0.3, 0.7),
-      capitalEfficiency: generateValue(fileNameSum * 10, fileSizeSeed, 0.3, 0.8),
-      distributionAdvantage: generateValue(fileNameSum * 11, fileSizeSeed, 0.2, 0.7),
-      businessModelViability: generateValue(fileNameSum * 12, fileSizeSeed, 0.3, 0.8),
-    };
-  };
-
   const handleFile = async (file: File) => {
     setIsUploading(true);
     setAnalysisError(null);
@@ -150,6 +121,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
         setAnalysisError(analysis.message || "This doesn't appear to be a pitch deck. Please upload a startup pitch deck.");
         setIsUploading(false);
         toast.error("This doesn't appear to be a pitch deck");
+        onFileProcessed(analysis.parameters); // Still pass the zero values
         return;
       }
 
@@ -164,12 +136,24 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
       const errorMessage = error instanceof Error ? error.message : 'Error analyzing file content';
       toast.error(errorMessage);
       
-      // Use a fallback method only if we have a file
-      if (file) {
-        const fallbackParameters = generateParametersFromFile(file);
-        onFileProcessed(fallbackParameters);
-        toast.info("Using simplified analysis due to processing error");
-      }
+      // Return all zeros if analysis fails
+      const zeroParameters: SVIFactors = {
+        marketSize: 0,
+        barrierToEntry: 0,
+        defensibility: 0,
+        insightFactor: 0,
+        complexity: 0,
+        riskFactor: 0,
+        teamFactor: 0,
+        marketTiming: 0,
+        competitionIntensity: 0,
+        capitalEfficiency: 0,
+        distributionAdvantage: 0,
+        businessModelViability: 0
+      };
+      
+      onFileProcessed(zeroParameters);
+      toast.info("Using zero scores due to processing error");
     }
   };
 
