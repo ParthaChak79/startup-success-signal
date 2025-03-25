@@ -79,22 +79,22 @@ export const analyzeWithOpenAI = async (text: string, fileName: string): Promise
     // Wait for a simulated analysis
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Simulated response
+    // Simulated response - making sure to use the correct property names from SVIFactors
     return {
       isPitchDeck: true,
       parameters: {
         marketSize: 0.65,
-        businessModel: 0.72,
+        barrierToEntry: 0.72,
         defensibility: 0.58,
-        innovation: 0.80,
-        competition: 0.45,
+        insightFactor: 0.80,
+        complexity: 0.45,
         riskFactor: 0.55,
-        traction: 0.62,
+        teamFactor: 0.62,
         marketTiming: 0.70,
-        customerInsights: 0.55,
-        costEfficiency: 0.68,
-        domain: 0.75,
-        businessModelValidation: 0.60
+        competitionIntensity: 0.55,
+        capitalEfficiency: 0.68,
+        distributionAdvantage: 0.75,
+        businessModelViability: 0.60
       }
     };
     

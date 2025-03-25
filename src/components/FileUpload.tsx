@@ -115,17 +115,17 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
 
     return {
       marketSize: generateValue(fileNameSum, fileSizeSeed, 0.3, 0.9),
-      businessModel: generateValue(fileNameSum * 2, fileSizeSeed, 0.2, 0.7),
+      barrierToEntry: generateValue(fileNameSum * 2, fileSizeSeed, 0.2, 0.7),
       defensibility: generateValue(fileNameSum * 3, fileSizeSeed, 0.2, 0.8),
-      innovation: generateValue(fileNameSum * 4, fileSizeSeed, 0.3, 0.8),
-      competition: generateValue(fileNameSum * 5, fileSizeSeed, 0.3, 0.7),
+      insightFactor: generateValue(fileNameSum * 4, fileSizeSeed, 0.3, 0.8),
+      complexity: generateValue(fileNameSum * 5, fileSizeSeed, 0.3, 0.7),
       riskFactor: generateValue(fileNameSum * 6, fileSizeSeed, 0.4, 0.7),
-      traction: generateValue(fileNameSum * 7, fileSizeSeed, 0.4, 0.9),
+      teamFactor: generateValue(fileNameSum * 7, fileSizeSeed, 0.4, 0.9),
       marketTiming: generateValue(fileNameSum * 8, fileSizeSeed, 0.3, 0.7),
-      customerInsights: generateValue(fileNameSum * 9, fileSizeSeed, 0.3, 0.7),
-      costEfficiency: generateValue(fileNameSum * 10, fileSizeSeed, 0.3, 0.8),
-      domain: generateValue(fileNameSum * 11, fileSizeSeed, 0.2, 0.7),
-      businessModelValidation: generateValue(fileNameSum * 12, fileSizeSeed, 0.3, 0.8),
+      competitionIntensity: generateValue(fileNameSum * 9, fileSizeSeed, 0.3, 0.7),
+      capitalEfficiency: generateValue(fileNameSum * 10, fileSizeSeed, 0.3, 0.8),
+      distributionAdvantage: generateValue(fileNameSum * 11, fileSizeSeed, 0.2, 0.7),
+      businessModelViability: generateValue(fileNameSum * 12, fileSizeSeed, 0.3, 0.8),
     };
   };
 
