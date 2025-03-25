@@ -1,20 +1,21 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { toast } from "sonner";
+import { toast as sonnerToast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { type SVIFactors } from '@/utils/sviCalculator';
+import { SVIFactors } from '@/utils/sviCalculator';
 import * as pdfjsLib from 'pdfjs-dist';
 import { analyzeWithOpenAI, ApiKeyForm } from '@/utils/openaiService';
 
-// Configure PDF.js worker
+// Use the same worker configuration as in PdfViewer
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 interface FileUploadProps {
   onFileProcessed: (parameters: SVIFactors) => void;
+  onFileSelected: (file: File) => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed, onFileSelected }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -60,15 +61,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
   };
 
   const processSelectedFile = (file: File) => {
-    // For simplicity, we'll only support PDF files
-    const validTypes = ['application/pdf'];
+    const validTypes = ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
     
     if (!validTypes.includes(file.type)) {
-      toast.error("Please upload a PDF file");
+      sonnerToast.error("Please upload a PDF or PowerPoint file");
       return;
     }
 
     setFileName(file.name);
+    onFileSelected(file);
     
     // Check if API key is provided
     if (!localStorage.getItem('openai_api_key')) {
@@ -105,39 +106,61 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
     setAnalysisError(null);
 
     try {
-      // Extract text from PDF
-      const text = await extractTextFromPDF(file);
+      // Only supporting PDF files for now since we're using pdfjs-dist
+      let text = '';
       
-      if (!text) {
-        throw new Error('Could not extract text from file');
+      if (file.type === 'application/pdf') {
+        text = await extractTextFromPDF(file);
+      } else {
+        throw new Error('Currently only PDF files are supported');
+      }
+      
+      if (!text || text.trim().length === 0) {
+        throw new Error('Could not extract text from file or file is empty');
       }
 
-      toast.info("Analyzing pitch deck with AI...");
+      sonnerToast.info("Analyzing pitch deck with AI...");
+      console.info("Analyzing with OpenAI:", file.name);
+      console.info("Text length:", text.length);
       
       // Analyze using OpenAI
       const analysis = await analyzeWithOpenAI(text, file.name);
       
-      if (!analysis.isPitchDeck) {
-        setAnalysisError(analysis.message || "This doesn't appear to be a pitch deck. Please upload a startup pitch deck.");
-        setIsUploading(false);
-        toast.error("This doesn't appear to be a pitch deck");
-        onFileProcessed(analysis.parameters); // Still pass the zero values
-        return;
+      if (analysis.factors) {
+        onFileProcessed(analysis.factors);
+        sonnerToast.success("Analysis complete!");
+      } else {
+        // If no proper factors were returned, assume it's not a pitch deck
+        const zeroFactors: SVIFactors = {
+          marketSize: 0,
+          barrierToEntry: 0,
+          defensibility: 0,
+          insightFactor: 0,
+          complexity: 0,
+          riskFactor: 0,
+          teamFactor: 0,
+          marketTiming: 0,
+          competitionIntensity: 0,
+          capitalEfficiency: 0,
+          distributionAdvantage: 0,
+          businessModelViability: 0
+        };
+        
+        onFileProcessed(zeroFactors);
+        sonnerToast.error("This doesn't appear to be a pitch deck");
       }
-
+      
       setIsUploading(false);
-      toast.success("Pitch deck analyzed successfully!");
-      onFileProcessed(analysis.parameters);
       
     } catch (error) {
       console.error('Error processing file:', error);
       setIsUploading(false);
       
       const errorMessage = error instanceof Error ? error.message : 'Error analyzing file content';
-      toast.error(errorMessage);
+      sonnerToast.error(errorMessage);
       
-      // Return all zeros if analysis fails
-      const zeroParameters: SVIFactors = {
+      // If analysis fails, return all zeros to indicate it's not a valid pitch deck
+      const zeroFactors: SVIFactors = {
         marketSize: 0,
         barrierToEntry: 0,
         defensibility: 0,
@@ -152,8 +175,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
         businessModelViability: 0
       };
       
-      onFileProcessed(zeroParameters);
-      toast.info("Using zero scores due to processing error");
+      onFileProcessed(zeroFactors);
     }
   };
 
@@ -167,10 +189,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
 
   if (needsApiKey) {
     return (
-      <Card className="p-8 mx-auto max-w-2xl">
+      <Card className="animate-fade-in p-8 mx-auto max-w-2xl">
         <h2 className="text-lg font-semibold mb-4">API Key Required</h2>
         <ApiKeyForm onApiKeySaved={handleApiKeySaved} />
-        <p className="text-sm text-muted-foreground mt-4">
+        <p className="text-sm text-gray-600 mt-4">
           Selected file: {fileName}
         </p>
       </Card>
@@ -178,14 +200,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
   }
 
   return (
-    <Card className={`p-8 mx-auto max-w-2xl ${isDragging ? 'border-primary' : ''}`}>
+    <div>
       {!apiKeyProvided && (
         <div className="mb-4">
           <ApiKeyForm onApiKeySaved={() => setApiKeyProvided(true)} />
         </div>
       )}
       <div 
-        className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : 'border-border bg-background/5'}`}
+        className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 bg-gray-50'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -193,7 +215,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
       >
         <div className="mb-4 text-center">
           <svg 
-            className={`mx-auto h-16 w-16 mb-4 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} 
+            className={`mx-auto h-16 w-16 mb-4 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24" 
@@ -202,16 +224,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
           
-          <h3 className="text-lg font-medium">
+          <h3 className="text-lg font-medium text-gray-900">
             {fileName ? fileName : 'Upload your pitch deck'}
           </h3>
           
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-gray-500">
             Drag and drop or click to upload your pitch deck (PDF)
           </p>
           
           {analysisError && (
-            <p className="mt-2 text-sm text-destructive">
+            <p className="mt-2 text-sm text-red-500">
               {analysisError}
             </p>
           )}
@@ -233,7 +255,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed }) => {
           {isUploading ? 'Analyzing...' : 'Select file'}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 };
 

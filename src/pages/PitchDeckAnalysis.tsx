@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { calculateSVI, type SVIFactors } from '@/utils/sviCalculator';
+import { calculateSVI, type SVIFactors, getFactorText, getLabelForFactor, getTooltipForFactor } from '@/utils/sviCalculator';
 import ResultCard from '@/components/ResultCard';
 import PdfViewer from '@/components/PdfViewer';
 import FileUpload from '@/components/FileUpload';
+import InfoTooltip from '@/components/InfoTooltip';
 
 const PitchDeckAnalysis = () => {
   const navigate = useNavigate();
@@ -63,6 +64,9 @@ const PitchDeckAnalysis = () => {
     setShowExtractedText(prev => !prev);
   };
 
+  // Check if a document is a non-pitch deck
+  const isNonPitchDeck = factors && Object.values(factors).every(val => val === 0);
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <div className="container px-4 py-8 max-w-6xl mx-auto">
@@ -89,7 +93,14 @@ const PitchDeckAnalysis = () => {
                 Startup Viability Index score. If the document isn't a pitch deck, all scores will be zero.
               </p>
               
-              <FileUpload onFileProcessed={handleFileProcessed} />
+              <FileUpload 
+                onFileProcessed={handleFileProcessed} 
+                onFileSelected={(selectedFile) => {
+                  setFile(selectedFile);
+                  const url = URL.createObjectURL(selectedFile);
+                  setFileUrl(url);
+                }}
+              />
             </Card>
           </div>
 
@@ -115,6 +126,44 @@ const PitchDeckAnalysis = () => {
                     <p className="text-sm text-muted-foreground">{analysis}</p>
                   </Card>
                 )}
+                
+                {/* Individual Parameter Scores */}
+                <Card className="p-4 glass-panel">
+                  <h3 className="text-lg font-medium mb-4">Parameter Analysis</h3>
+                  
+                  {isNonPitchDeck ? (
+                    <div className="p-3 bg-amber-50 text-amber-800 rounded-md mb-4">
+                      This document doesn't appear to be a startup pitch deck. No relevant startup information was found.
+                    </div>
+                  ) : null}
+                  
+                  <div className="space-y-3">
+                    {Object.entries(factors).map(([key, value]) => (
+                      <div key={key} className="border-b border-border pb-3 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-center mb-1">
+                          <div className="flex items-center">
+                            <span className="font-medium">{getLabelForFactor(key as keyof SVIFactors)}</span>
+                            <InfoTooltip content={getTooltipForFactor(key as keyof SVIFactors)} />
+                          </div>
+                          <span className={`font-bold ${value === 0 ? 'text-red-500' : value >= 0.7 ? 'text-green-600' : value >= 0.4 ? 'text-amber-600' : 'text-orange-600'}`}>
+                            {value.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${value === 0 ? 'bg-red-500' : value >= 0.7 ? 'bg-green-500' : value >= 0.4 ? 'bg-amber-500' : 'bg-orange-500'}`}
+                            style={{ width: `${value * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {value === 0 
+                            ? "No information found" 
+                            : getFactorText(key as keyof SVIFactors, value)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
                 
                 {extractedText && (
                   <Card className="p-4 glass-panel">
