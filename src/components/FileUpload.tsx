@@ -126,11 +126,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed, onFileSelected
       // Analyze using OpenAI
       const analysis = await analyzeWithOpenAI(text, file.name);
       
-      if (analysis.factors) {
-        onFileProcessed(analysis.factors);
+      if (analysis.parameters) {
+        onFileProcessed(analysis.parameters);
         sonnerToast.success("Analysis complete!");
       } else {
-        // If no proper factors were returned, assume it's not a pitch deck
+        // If no proper parameters were returned, assume it's not a pitch deck
         const zeroFactors: SVIFactors = {
           marketSize: 0,
           barrierToEntry: 0,
