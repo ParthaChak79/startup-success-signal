@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
 import SliderInput from '@/components/SliderInput';
 import ResultCard from '@/components/ResultCard';
@@ -18,6 +15,7 @@ import {
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
 import { RefreshCcw, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -77,39 +75,12 @@ const Index = () => {
     'businessModelViability'
   ];
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: 'Logged Out',
-        description: 'You have been successfully logged out.',
-      });
-      navigate('/auth');
-    } catch (error: any) {
-      toast({
-        title: 'Logout Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen w-full bg-background text-foreground transition-colors duration-300">
       <div className="container px-4 py-8 max-w-6xl mx-auto">
         <header className="w-full flex flex-col items-center justify-center text-center mb-8 pb-8 animate-fade-in">
           <div className="absolute top-4 right-4 flex items-center space-x-4">
             <ThemeToggle />
-            <Button 
-              variant="destructive" 
-              className="flex items-center gap-2"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-2">
