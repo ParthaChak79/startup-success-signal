@@ -11,7 +11,7 @@ import { analyzeWithOpenAI, ApiKeyForm } from '@/utils/openaiService';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 interface FileUploadProps {
-  onFileProcessed: (parameters: SVIFactors) => void;
+  onFileProcessed: (parameters: SVIFactors, explanations?: Record<string, string>) => void;
   onFileSelected: (file: File) => void;
 }
 
@@ -61,10 +61,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed, onFileSelected
   };
 
   const processSelectedFile = (file: File) => {
-    const validTypes = ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
+    const validTypes = ['application/pdf'];
     
     if (!validTypes.includes(file.type)) {
-      sonnerToast.error("Please upload a PDF or PowerPoint file");
+      sonnerToast.error("Please upload a PDF file");
       return;
     }
 
@@ -106,14 +106,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed, onFileSelected
     setAnalysisError(null);
 
     try {
-      // Only supporting PDF files for now since we're using pdfjs-dist
-      let text = '';
-      
-      if (file.type === 'application/pdf') {
-        text = await extractTextFromPDF(file);
-      } else {
-        throw new Error('Currently only PDF files are supported');
-      }
+      // Extract text from PDF
+      let text = await extractTextFromPDF(file);
       
       if (!text || text.trim().length === 0) {
         throw new Error('Could not extract text from file or file is empty');
@@ -127,8 +121,19 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileProcessed, onFileSelected
       const analysis = await analyzeWithOpenAI(text, file.name);
       
       if (analysis.parameters) {
-        onFileProcessed(analysis.parameters);
-        sonnerToast.success("Analysis complete!");
+        // Pass the parameters to the parent component
+        onFileProcessed(
+          analysis.parameters, 
+          analysis.explanations as Record<string, string> // Pass explanations if available
+        );
+        
+        // Check if all parameters are 0 (not a pitch deck)
+        const allZeros = Object.values(analysis.parameters).every(val => val === 0);
+        if (allZeros) {
+          sonnerToast.error("This doesn't appear to be a pitch deck");
+        } else {
+          sonnerToast.success("Analysis complete!");
+        }
       } else {
         // If no proper parameters were returned, assume it's not a pitch deck
         const zeroFactors: SVIFactors = {

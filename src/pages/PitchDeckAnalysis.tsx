@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { calculateSVI, type SVIFactors, getFactorText, getLabelForFactor, getTooltipForFactor } from '@/utils/sviCalculator';
 import ResultCard from '@/components/ResultCard';
 import PdfViewer from '@/components/PdfViewer';
@@ -20,11 +20,18 @@ const PitchDeckAnalysis = () => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [showExtractedText, setShowExtractedText] = useState(false);
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleFileProcessed = (parameters: SVIFactors) => {
+  const handleFileProcessed = (parameters: SVIFactors, explanationData?: Record<string, string>) => {
     setFactors(parameters);
     const calculatedScore = calculateSVI(parameters);
     setScore(calculatedScore);
+    setIsAnalyzing(false);
+    
+    if (explanationData) {
+      setExplanations(explanationData);
+    }
     
     // Generate a simple analysis based on the score
     let analysisText = generateAnalysis(calculatedScore);
@@ -64,6 +71,13 @@ const PitchDeckAnalysis = () => {
     setShowExtractedText(prev => !prev);
   };
 
+  const handleFileSelected = (selectedFile: File) => {
+    setFile(selectedFile);
+    const url = URL.createObjectURL(selectedFile);
+    setFileUrl(url);
+    setIsAnalyzing(true);
+  };
+
   // Check if a document is a non-pitch deck
   const isNonPitchDeck = factors && Object.values(factors).every(val => val === 0);
 
@@ -89,17 +103,13 @@ const PitchDeckAnalysis = () => {
             <Card className="p-6 glass-panel">
               <h2 className="text-xl font-semibold mb-4">Upload Your Pitch Deck</h2>
               <p className="text-muted-foreground mb-6">
-                Upload your startup pitch deck as a PDF file and we'll analyze it to calculate your 
-                Startup Viability Index score. If the document isn't a pitch deck, all scores will be zero.
+                Upload your startup pitch deck as a PDF file and we'll analyze it with OpenAI to calculate your 
+                Startup Viability Index score. The AI will evaluate each parameter individually, giving zeros where information is missing.
               </p>
               
               <FileUpload 
                 onFileProcessed={handleFileProcessed} 
-                onFileSelected={(selectedFile) => {
-                  setFile(selectedFile);
-                  const url = URL.createObjectURL(selectedFile);
-                  setFileUrl(url);
-                }}
+                onFileSelected={handleFileSelected}
               />
             </Card>
           </div>
@@ -115,8 +125,19 @@ const PitchDeckAnalysis = () => {
               </Card>
             )}
             
+            {/* Loading indicator */}
+            {isAnalyzing && (
+              <Card className="p-4 glass-panel">
+                <div className="flex flex-col items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+                  <p className="text-center text-muted-foreground">Analyzing your pitch deck using AI...</p>
+                  <p className="text-center text-sm text-muted-foreground mt-2">This may take a few moments.</p>
+                </div>
+              </Card>
+            )}
+            
             {/* Results (only shown if analysis is completed) */}
-            {score !== null && factors && (
+            {score !== null && factors && !isAnalyzing && (
               <div className="space-y-4">
                 <ResultCard score={score} calculating={false} />
                 
@@ -132,8 +153,9 @@ const PitchDeckAnalysis = () => {
                   <h3 className="text-lg font-medium mb-4">Parameter Analysis</h3>
                   
                   {isNonPitchDeck ? (
-                    <div className="p-3 bg-amber-50 text-amber-800 rounded-md mb-4">
-                      This document doesn't appear to be a startup pitch deck. No relevant startup information was found.
+                    <div className="p-3 bg-amber-50 text-amber-800 rounded-md mb-4 flex items-start">
+                      <AlertTriangle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <p>This document doesn't appear to be a startup pitch deck. No relevant startup information was found.</p>
                     </div>
                   ) : null}
                   
@@ -158,7 +180,7 @@ const PitchDeckAnalysis = () => {
                         <p className="text-xs text-muted-foreground mt-1">
                           {value === 0 
                             ? "No information found" 
-                            : getFactorText(key as keyof SVIFactors, value)}
+                            : explanations[key] || getFactorText(key as keyof SVIFactors, value)}
                         </p>
                       </div>
                     ))}
