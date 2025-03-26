@@ -9,7 +9,101 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      pitch_decks: {
+        Row: {
+          analysis_complete: boolean | null
+          analysis_results: Json | null
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          startup_id: string
+        }
+        Insert: {
+          analysis_complete?: boolean | null
+          analysis_results?: Json | null
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          startup_id: string
+        }
+        Update: {
+          analysis_complete?: boolean | null
+          analysis_results?: Json | null
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          startup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pitch_decks_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "startups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      startups: {
+        Row: {
+          created_at: string
+          description: string | null
+          factors: Json | null
+          id: string
+          name: string
+          score: number | null
+          scored_manually: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          factors?: Json | null
+          id?: string
+          name: string
+          score?: number | null
+          scored_manually?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          factors?: Json | null
+          id?: string
+          name?: string
+          score?: number | null
+          scored_manually?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
