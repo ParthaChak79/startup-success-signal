@@ -64,6 +64,7 @@ export const analyzeWithOpenAI = async (text: string, fileName: string): Promise
   isPitchDeck: boolean;
   message?: string;
   parameters: SVIFactors;
+  explanations?: Record<string, string>;
 }> => {
   const apiKey = localStorage.getItem('openai_api_key');
   
@@ -215,9 +216,13 @@ If this is not a pitch deck, set all parameters to 0.`;
         businessModelViability: parameters.businessModelViability || 0
       };
       
+      // Extract explanations if they exist
+      const explanations = analysisResult.explanation || {};
+      
       return {
         isPitchDeck: true,
-        parameters: allFactors
+        parameters: allFactors,
+        explanations: explanations
       };
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
