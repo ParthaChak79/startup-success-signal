@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import ThemeToggle from '@/components/ThemeToggle';
 import SliderInput from '@/components/SliderInput';
@@ -14,15 +15,25 @@ import {
   type SVIFactors 
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
-import { RefreshCcw, FileText } from 'lucide-react';
+import { RefreshCcw, FileText, Globe, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [factors, setFactors] = useState<SVIFactors>(defaultFactors);
   const [score, setScore] = useState<number>(0);
   const [calculating, setCalculating] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<'calculator' | 'examples'>('calculator');
+
+  useEffect(() => {
+    // Check if we have startup factors passed from another page
+    if (location.state && location.state.startupFactors) {
+      setFactors(location.state.startupFactors);
+      // Clear the location state to avoid reapplying on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     const sviScore = calculateSVI(factors);
@@ -86,22 +97,38 @@ const Index = () => {
           <h1 className="text-5xl md:text-6xl font-bold mb-2">
             <span className="svi-gradient-text">Startup</span>
             <br />
-            <span className="text-foreground">Viability Index</span>
+            <span className="text-foreground">Success Index</span>
           </h1>
           
           <p className="text-muted-foreground max-w-2xl mx-auto mt-4 text-sm md:text-base">
-            The Startup Viability Index (SVI) is a quantitative framework for evaluating 
+            The Startup Success Index (SSI) is a quantitative framework for evaluating 
             startup potential by measuring the balance between opportunity factors and 
             execution challenges. It produces a score from 0 to 1 using a sophisticated formula.
           </p>
           
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button 
               onClick={() => navigate('/pitch-deck-analysis')}
               className="flex items-center gap-2"
             >
               <FileText className="w-4 h-4" />
               Upload Pitch Deck
+            </Button>
+            <Button 
+              onClick={() => navigate('/global-startups')}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Globe className="w-4 h-4" />
+              Global Startups
+            </Button>
+            <Button 
+              onClick={() => navigate('/indian-startups')}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <MapPin className="w-4 h-4" />
+              Indian Startups
             </Button>
           </div>
         </header>
@@ -194,47 +221,44 @@ const Index = () => {
             </div>
           ) : (
             <div className="glass-panel rounded-xl p-6 animate-fade-in">
-              <h2 className="text-2xl font-bold mb-6">Startup Examples</h2>
+              <h2 className="text-2xl font-bold mb-6">Featured Examples</h2>
               
-              <div className="space-y-8">
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-emerald-500">Unicorn Startups (Highest SVI)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.unicorn.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
+              <div className="text-center mb-6">
+                <p className="text-muted-foreground mb-4">
+                  View our curated lists of startups with pre-calculated Success Index scores
+                </p>
+                <div className="flex justify-center gap-4">
+                  <Button 
+                    onClick={() => navigate('/global-startups')}
+                    className="flex items-center gap-2"
+                  >
+                    <Globe className="w-4 h-4" />
+                    Global Startups
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/indian-startups')}
+                    className="flex items-center gap-2"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Indian Startups
+                  </Button>
                 </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-blue-500">Successful but Smaller Startups</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.medium.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-red-500">Failed Startups (Lowest SVI)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.failed.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
-                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Featured Global Examples */}
+                <StartupCard
+                  startup={startupExamples.unicorn[0]}
+                  onSelect={loadStartupExample}
+                />
+                <StartupCard
+                  startup={startupExamples.unicorn[2]}
+                  onSelect={loadStartupExample}
+                />
+                <StartupCard
+                  startup={startupExamples.failed[0]}
+                  onSelect={loadStartupExample}
+                />
               </div>
             </div>
           )}
