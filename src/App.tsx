@@ -10,6 +10,7 @@ import PitchDeckAnalysis from "./pages/PitchDeckAnalysis";
 import NotFound from "./pages/NotFound";
 import GlobalStartups from "./pages/GlobalStartups";
 import IndianStartups from "./pages/IndianStartups";
+import BuyMeCoffeeButton from "./components/BuyMeCoffeeButton";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => {
       <ThemeProvider>
         <TooltipProvider>
           <BrowserRouter>
+            <BuyMeCoffeeButton />
             <Toaster />
             <Sonner />
             <Routes>
@@ -37,3 +39,4 @@ const App = () => {
 };
 
 export default App;
+
