@@ -72,7 +72,7 @@ const ResultCard = ({ score, calculating }: ResultCardProps) => {
   return (
     <div className={`glass-panel rounded-xl p-6 transition-all duration-500 ${calculating ? 'opacity-50' : 'opacity-100'}`}>
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-foreground/80">Startup Viability Score</h3>
+        <h3 className="text-lg font-medium text-foreground/80">Startup Success Score</h3>
         
         <div className="flex items-baseline space-x-2">
           <span className={`text-5xl font-bold ${getScoreColor(score)}`}>
