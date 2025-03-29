@@ -28,13 +28,30 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
     setError(false);
     setRetryCount(0);
     
-    // Determine file type based on URL
-    if (fileUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp|tiff|tif)$/i)) {
+    // Determine file type based on URL or object URL
+    if (fileUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp|tiff|tif)$/i) || 
+        fileUrl.includes('blob:') && fileUrl.includes('image')) {
       setFileType('image');
-    } else if (fileUrl.match(/\.(pdf)$/i)) {
+    } else if (fileUrl.match(/\.(pdf)$/i) || 
+               fileUrl.includes('blob:') && !fileUrl.includes('image')) {
       setFileType('pdf');
     } else {
-      setFileType('other');
+      // Try to infer from content if possible
+      fetch(fileUrl, { method: 'HEAD' })
+        .then(response => {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('image')) {
+            setFileType('image');
+          } else if (contentType && contentType.includes('pdf')) {
+            setFileType('pdf');
+          } else {
+            setFileType('other');
+          }
+        })
+        .catch(() => {
+          // If we can't determine, default to PDF and let the viewer handle errors
+          setFileType('pdf');
+        });
     }
   }, [fileUrl]);
 

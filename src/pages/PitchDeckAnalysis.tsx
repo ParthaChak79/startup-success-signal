@@ -100,13 +100,18 @@ const PitchDeckAnalysis = () => {
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
     
     const isPdf = fileType.includes('pdf') || fileExt === 'pdf';
-    setIsPreviewAvailable(isPdf);
+    const isImage = fileType.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'].includes(fileExt);
     
-    if (isPdf) {
+    setIsPreviewAvailable(isPdf || isImage);
+    
+    if (isPdf || isImage) {
       const url = URL.createObjectURL(selectedFile);
       setFileUrl(url);
     } else {
       setFileUrl(null);
+      sonnerToast.info("Preview not available for this file type", {
+        description: "We'll still process and analyze it"
+      });
     }
     
     setIsAnalyzing(true);
@@ -162,7 +167,7 @@ const PitchDeckAnalysis = () => {
               <h2 className="text-xl font-semibold mb-4">Upload Your Pitch Deck</h2>
               <p className="text-muted-foreground mb-6">
                 Upload your startup pitch deck as a PDF, presentation, or image file and we'll analyze it with OpenAI to calculate your 
-                Startup Viability Index score. We support various file types including PDFs, presentations, and images.
+                Startup Viability Index score. We support various file types including PDFs, presentations, images, and documents.
               </p>
               
               <FileUpload 
@@ -186,21 +191,23 @@ const PitchDeckAnalysis = () => {
 
           <div className="space-y-6">
             {uploadError && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mb-4">
                 <FileWarning className="h-4 w-4" />
-                <AlertTitle>File Upload Issue</AlertTitle>
-                <AlertDescription>
-                  {uploadError}
-                </AlertDescription>
+                <AlertTitle>{uploadError}</AlertTitle>
+                {errorDetails && (
+                  <AlertDescription>
+                    {errorDetails}
+                  </AlertDescription>
+                )}
               </Alert>
             )}
             
             {file && !isPreviewAvailable && (
-              <Alert>
+              <Alert variant="default" className="mb-4">
                 <Info className="h-4 w-4" />
                 <AlertTitle>File Preview Unavailable</AlertTitle>
                 <AlertDescription>
-                  Preview is only available for PDF documents. Your {file.type || "non-PDF"} file will be processed using OCR technology.
+                  Preview is only available for PDF documents and images. Your file will be processed using OCR technology.
                 </AlertDescription>
               </Alert>
             )}

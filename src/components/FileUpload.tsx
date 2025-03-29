@@ -462,11 +462,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
         text = await extractTextFromImage(file);
         ocrUsed = true;
       } else if (fileType === 'presentation' || fileType === 'document') {
-        // For presentations and documents, we'll use OCR as a fallback
+        // For presentations and documents, we'll use OCR
         sonnerToast.info(`Processing ${fileType} using OCR`, {
           description: "This may take a moment"
         });
-        text = await extractTextFromImage(file);
+        
+        // For non-PDF files, we need to convert them to an image first
+        // This is a simplified approach - in a production app, you might
+        // use server-side processing for better conversion
+        try {
+          // First attempt direct OCR on the file (might work for some file types)
+          text = await extractTextFromImage(file);
+        } catch (err) {
+          console.error('Direct OCR failed, treating as scanned content:', err);
+          sonnerToast.error("Could not process this file format directly", {
+            description: "Try uploading a PDF version if available"
+          });
+          throw new Error(`Could not process this ${fileType} file format. Try converting to PDF first.`);
+        }
         ocrUsed = true;
       }
       
