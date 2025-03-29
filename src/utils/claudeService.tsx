@@ -146,9 +146,9 @@ const incrementFreeUsage = async (): Promise<void> => {
   
   // Use Supabase RPC to increment free usage count
   try {
-    // Pass the user ID as an object to match the function signature
+    // Pass the user ID as an object with the correct typecasting
     const { error } = await supabase.rpc('increment_free_analysis_usage', {
-      user_id: session.user.id
+      user_id: session.user.id as never
     });
 
     if (error) {
@@ -184,7 +184,6 @@ export const analyzeWithClaude = async (text: string, fileName: string): Promise
     console.log('Text length:', text.length);
     console.log('Using free usage:', usingFreeUsage);
     
-    // The prompt is similar to the OpenAI one but adapted for Claude
     const systemPrompt = `
 You are an expert startup investor and pitch deck analyzer. Your task is to extract and analyze key information from a startup pitch deck.
 
@@ -232,6 +231,7 @@ If this is not a pitch deck, set all parameters to 0.`;
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session?.access_token
         },
         body: JSON.stringify({
           text: text.substring(0, 15000),
@@ -240,8 +240,15 @@ If this is not a pitch deck, set all parameters to 0.`;
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error analyzing with backend service');
+        const errorText = await response.text();
+        console.error('Error response from backend:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || 'Error analyzing with backend service');
+        } catch (parseError) {
+          // If we can't parse the error as JSON, return the raw text
+          throw new Error(`Error analyzing with backend service: ${errorText}`);
+        }
       }
       
       // Increment free usage count
@@ -275,12 +282,28 @@ If this is not a pitch deck, set all parameters to 0.`;
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error calling Claude API');
+        const errorText = await response.text();
+        console.error('Error response from Claude API:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error?.message || 'Error calling Claude API');
+        } catch (parseError) {
+          // If we can't parse the error as JSON, return the raw text
+          throw new Error(`Error calling Claude API: ${errorText}`);
+        }
       }
     }
 
-    const data = await response.json();
+    // Safely parse the response
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('Raw response:', responseText.substring(0, 200) + '...');
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Error parsing response as JSON:', parseError);
+      throw new Error('Received invalid response format from the server');
+    }
     
     // Parse the response
     try {

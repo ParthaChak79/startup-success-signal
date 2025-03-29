@@ -80,6 +80,8 @@ Respond with a JSON object containing:
 
 If this is not a pitch deck, set all parameters to 0.`;
 
+    console.log(`Processing analysis request for file: ${fileName || 'unknown'}`);
+    
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -117,6 +119,8 @@ If this is not a pitch deck, set all parameters to 0.`;
 
     const claudeResponse = await response.json();
     const content = claudeResponse.content[0].text;
+    
+    console.log("Successfully processed analysis request");
 
     // Return the result
     return new Response(
