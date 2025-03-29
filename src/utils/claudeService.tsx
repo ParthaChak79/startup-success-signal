@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -136,11 +135,13 @@ const checkFreeUsage = async (): Promise<{ freeUsageAvailable: boolean, freeUsag
   };
 };
 
-const incrementFreeUsage = async (): Promise<void> => {
+const incrementFreeUsage = async () => {
   // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
   
-  if (!session?.user) {
+  if (!session || !session.user) {
+    console.warn("Cannot increment free usage: No authenticated user");
     return;
   }
   
@@ -152,8 +153,8 @@ const incrementFreeUsage = async (): Promise<void> => {
     if (error) {
       console.error("Failed to increment free usage:", error);
     }
-  } catch (error) {
-    console.error("Error in incrementFreeUsage:", error);
+  } catch (err) {
+    console.error("Error incrementing free usage count:", err);
   }
 };
 

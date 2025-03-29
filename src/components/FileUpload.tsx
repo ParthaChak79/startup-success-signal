@@ -480,8 +480,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
         ocrUsed = true;
       }
       
-      if (!text || text.trim().length < 100) {
-        throw new Error(`Could not extract sufficient text from the ${fileType}. The file may contain very little text or is primarily images.`);
+      if (!text || text.trim().length < 50) {
+        console.warn("Limited text content extracted:", text ? text.length : 0, "characters");
+        sonnerToast.warning("Limited text content detected", {
+          description: "The analysis may not be accurate or complete"
+        });
+        
+        if (text.trim().length === 0) {
+          text = `[Limited text content extracted from ${fileType}]`;
+        }
       }
 
       if (onTextExtracted) {

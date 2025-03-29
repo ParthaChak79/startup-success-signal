@@ -53,6 +53,34 @@ serve(async (req) => {
       );
     }
 
+    // Check if there's enough text content to analyze (minimum 50 characters)
+    if (text.trim().length < 50) {
+      console.log("Insufficient text content for analysis:", text.length, "characters");
+      return new Response(
+        JSON.stringify({ 
+          result: JSON.stringify({
+            isPitchDeck: false,
+            parameters: {
+              marketSize: 0,
+              barrierToEntry: 0,
+              defensibility: 0,
+              insightFactor: 0,
+              complexity: 0,
+              riskFactor: 0,
+              teamFactor: 0,
+              marketTiming: 0,
+              competitionIntensity: 0,
+              capitalEfficiency: 0,
+              distributionAdvantage: 0,
+              businessModelViability: 0
+            },
+            explanation: "Insufficient text content was extracted from this file. The document may contain very little text or be primarily images."
+          })
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // The prompt for Claude
     const systemPrompt = `
 You are an expert startup investor and pitch deck analyzer. Your task is to extract and analyze key information from a startup pitch deck.
