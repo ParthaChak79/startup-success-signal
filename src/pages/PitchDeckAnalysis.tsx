@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,9 +29,11 @@ const PitchDeckAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showStartupForm, setShowStartupForm] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null); // Added missing state variable
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isOcrMode, setIsOcrMode] = useState(false);
   const [isPreviewAvailable, setIsPreviewAvailable] = useState(true);
+  const [freeUsageRemaining, setFreeUsageRemaining] = useState<number | null>(null);
+  const [hasClaudeApiKey, setHasClaudeApiKey] = useState<boolean>(false);
 
   useEffect(() => {
     if (!authLoading && !user && file) {
@@ -44,6 +45,31 @@ const PitchDeckAnalysis = () => {
       });
     }
   }, [user, authLoading, file, navigate]);
+
+  useEffect(() => {
+    const checkFreeUsageAndApiKey = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('free_analyses_used, claude_api_key')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) throw error;
+        
+        const FREE_USAGE_LIMIT = 3;
+        const usedCount = data?.free_analyses_used || 0;
+        setFreeUsageRemaining(Math.max(0, FREE_USAGE_LIMIT - usedCount));
+        setHasClaudeApiKey(!!data?.claude_api_key);
+      } catch (err) {
+        console.error("Error fetching usage data:", err);
+      }
+    };
+    
+    checkFreeUsageAndApiKey();
+  }, [user]);
 
   const handleFileProcessed = (parameters: SVIFactors, explanationData?: Record<string, string>) => {
     setFactors(parameters);
@@ -97,7 +123,7 @@ const PitchDeckAnalysis = () => {
   const handleFileSelected = (selectedFile: File) => {
     setFile(selectedFile);
     setUploadError(null);
-    setErrorDetails(null); // Clear error details when a new file is selected
+    setErrorDetails(null);
     
     const fileType = selectedFile.type.toLowerCase();
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
@@ -136,7 +162,7 @@ const PitchDeckAnalysis = () => {
   const handleUploadError = (error: string, details?: string) => {
     setUploadError(error);
     if (details) {
-      setErrorDetails(details); // Set error details when an error occurs
+      setErrorDetails(details);
       console.error('Upload error details:', details);
     }
   };
@@ -165,12 +191,26 @@ const PitchDeckAnalysis = () => {
           <h1 className="text-3xl font-bold">Pitch Deck Analysis</h1>
         </div>
 
+        {user && freeUsageRemaining !== null && (
+          <Alert variant="default" className="mb-6 bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800">Free Analysis Status</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              {freeUsageRemaining > 0 ? (
+                <>You have <strong>{freeUsageRemaining}</strong> free {freeUsageRemaining === 1 ? 'analysis' : 'analyses'} remaining.</>
+              ) : (
+                <>You've used all your free analyses. {!hasClaudeApiKey && 'Please provide your Claude API key to continue.'}</>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <Card className="p-6 glass-panel">
               <h2 className="text-xl font-semibold mb-4">Upload Your Pitch Deck</h2>
               <p className="text-muted-foreground mb-6">
-                Upload your startup pitch deck as a PDF, presentation, or image file and we'll analyze it with OpenAI to calculate your 
+                Upload your startup pitch deck as a PDF, presentation, or image file and we'll analyze it with Claude AI to calculate your 
                 Startup Viability Index score. We support various file types including PDFs, presentations, images, and documents.
               </p>
               

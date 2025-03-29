@@ -49,19 +49,25 @@ export type Database = {
       }
       profiles: {
         Row: {
+          claude_api_key: string | null
           created_at: string
+          free_analyses_used: number | null
           id: string
           updated_at: string
           username: string | null
         }
         Insert: {
+          claude_api_key?: string | null
           created_at?: string
+          free_analyses_used?: number | null
           id: string
           updated_at?: string
           username?: string | null
         }
         Update: {
+          claude_api_key?: string | null
           created_at?: string
+          free_analyses_used?: number | null
           id?: string
           updated_at?: string
           username?: string | null

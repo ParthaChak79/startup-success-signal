@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast as sonnerToast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -6,12 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SVIFactors } from '@/utils/sviCalculator';
 import * as pdfjsLib from 'pdfjs-dist';
-import { analyzeWithOpenAI, ApiKeyForm } from '@/utils/openaiService';
+import { analyzeWithClaude, ApiKeyForm } from '@/utils/claudeService';
 import { File, Scan, FileImage, FileText, UploadIcon, AlertTriangle, PresentationIcon, Info } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
-// Use the same worker configuration as in PdfViewer
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 interface FileUploadProps {
@@ -44,14 +44,35 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [processingStage, setProcessingStage] = useState<ProcessingStage>('idle');
   const [ocrMode, setOcrMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthContext();
+  const [freeUsageRemaining, setFreeUsageRemaining] = useState<number>(0);
 
-  // Check if API key exists on component mount
   useEffect(() => {
-    const apiKey = localStorage.getItem('openai_api_key');
-    setApiKeyProvided(!!apiKey);
-  }, []);
+    const checkApiKeyAndUsage = async () => {
+      if (!user) {
+        const claudeKey = localStorage.getItem('claude_api_key');
+        setApiKeyProvided(!!claudeKey);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('claude_api_key, free_analyses_used')
+        .eq('id', user.id)
+        .single();
+      
+      if (!error && data) {
+        setApiKeyProvided(!!data.claude_api_key);
+        
+        const FREE_USAGE_LIMIT = 3;
+        const usedCount = data.free_analyses_used || 0;
+        setFreeUsageRemaining(Math.max(0, FREE_USAGE_LIMIT - usedCount));
+      }
+    };
+    
+    checkApiKeyAndUsage();
+  }, [user]);
 
-  // Handle drag events
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
@@ -112,23 +133,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setProcessingStage('validating');
     setProcessingProgress(5);
     
-    // Basic validations first
     if (file.size === 0) {
       return { valid: false, reason: "The file is empty (0 bytes)" };
     }
     
-    if (file.size > 20 * 1024 * 1024) {  // 20MB limit
+    if (file.size > 20 * 1024 * 1024) {
       return { valid: false, reason: "File size exceeds the 20MB limit" };
     }
     
-    // Check for valid file signatures and content
     try {
       const fileType = determineFileType(file);
       
       if (fileType === 'pdf') {
         try {
           const arrayBuffer = await file.arrayBuffer();
-          // Check for PDF header signature
           const dataView = new DataView(arrayBuffer);
           const header = String.fromCharCode(dataView.getUint8(0), dataView.getUint8(1), dataView.getUint8(2), dataView.getUint8(3));
           
@@ -136,17 +154,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
             return { valid: false, reason: "This file doesn't appear to be a valid PDF. It might be corrupted or improperly exported." };
           }
           
-          // Try to load with PDF.js for further validation
           const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
           
           if (pdf.numPages === 0) {
             return { valid: false, reason: "This PDF doesn't contain any pages" };
           }
           
-          // Check if all pages contain actual content (not just empty pages)
           let hasContent = false;
           
-          for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {  // Check first 3 pages
+          for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
             if (textContent.items.length > 0) {
@@ -156,12 +172,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
           }
           
           if (!hasContent) {
-            // PDF has pages but no extractable text - might need OCR
             setOcrMode(true);
             sonnerToast.info("This PDF appears to contain scanned content", {
               description: "We'll try to extract text using OCR technology"
             });
-            return { valid: true };  // We'll handle it with OCR
+            return { valid: true };
           }
           
           return { valid: true };
@@ -173,11 +188,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
           };
         }
       } else if (fileType === 'image') {
-        // For images, validate they can be loaded
         return new Promise(resolve => {
           const img = new Image();
           img.onload = () => {
-            // Image loaded successfully
             if (img.width === 0 || img.height === 0) {
               resolve({ valid: false, reason: "This image has invalid dimensions" });
             } else {
@@ -194,7 +207,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
           img.src = URL.createObjectURL(file);
         });
       } else if (fileType === 'presentation' || fileType === 'document') {
-        // For presentations and documents, warn about limited support
         setOcrMode(true);
         sonnerToast.info(`This ${fileType === 'presentation' ? 'presentation' : 'document'} will be processed using OCR`, {
           description: "For best results, consider converting to PDF first"
@@ -233,7 +245,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
     
-    // Validate file content
     const validationResult = await validateFileContent(file);
     if (!validationResult.valid) {
       setIsUploading(false);
@@ -247,11 +258,23 @@ const FileUpload: React.FC<FileUploadProps> = ({
     
     onFileSelected(file);
     
-    // Check if API key is provided
-    if (!localStorage.getItem('openai_api_key')) {
+    if (user && freeUsageRemaining <= 0 && !apiKeyProvided) {
       setNeedsApiKey(true);
       setSelectedFile(file);
       setIsUploading(false);
+      sonnerToast.info("You've used all your free analyses", {
+        description: "Please provide your Claude API key to continue"
+      });
+      return;
+    }
+    
+    if (!user) {
+      setNeedsApiKey(true);
+      setSelectedFile(file);
+      setIsUploading(false);
+      sonnerToast.info("Please sign in to use this feature", {
+        description: "Sign in for 3 free analyses or to use your Claude API key"
+      });
       return;
     }
     
@@ -268,7 +291,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
       let fullText = '';
       let textExtracted = false;
       
-      // Try standard text extraction first
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
@@ -279,32 +301,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
           fullText += pageText + ' ';
         }
         
-        // Update progress for each page processed
         setProcessingProgress(15 + Math.floor((i / pdf.numPages) * 25));
       }
       
-      // If we got text, return it
-      if (textExtracted && fullText.trim().length > 50) { // Make sure we got meaningful text
+      if (textExtracted && fullText.trim().length > 50) {
         console.log("PDF text extracted successfully without OCR");
         return { text: fullText, isOcr: false };
       }
       
-      // If text extraction failed or yielded very little text, try OCR
       console.log("PDF text extraction yielded insufficient text, falling back to OCR");
       sonnerToast.info("Using OCR to extract text from PDF", {
         description: "This might take a moment"
       });
       
-      // Convert PDF pages to images and perform OCR
       let ocrText = '';
-      const scale = 1.5; // Higher scale for better OCR results
+      const scale = 1.5;
       
       for (let i = 1; i <= pdf.numPages; i++) {
         try {
           const page = await pdf.getPage(i);
           const viewport = page.getViewport({ scale });
           
-          // Create canvas for rendering
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           canvas.height = viewport.height;
@@ -312,13 +329,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
           
           if (!context) continue;
           
-          // Render PDF page to canvas
           await page.render({
             canvasContext: context,
             viewport: viewport
           }).promise;
           
-          // Perform OCR on the rendered page
           const { data } = await Tesseract.recognize(
             canvas.toDataURL('image/png'),
             'eng',
@@ -336,7 +351,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           setProcessingProgress(40 + (i / pdf.numPages * 25));
         } catch (err) {
           console.warn(`OCR failed for page ${i}:`, err);
-          continue; // Skip this page if OCR fails
+          continue;
         }
       }
       
@@ -355,7 +370,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
         description: "This may take a moment"
       });
       
-      // For better OCR results, we'll preprocess the image
       const preprocessImage = async (imageFile: File): Promise<string> => {
         return new Promise((resolve) => {
           const img = new Image();
@@ -368,44 +382,36 @@ const FileUpload: React.FC<FileUploadProps> = ({
               return;
             }
             
-            // Set canvas dimensions to match image
             canvas.width = img.width;
             canvas.height = img.height;
             
-            // Draw original image
             ctx.drawImage(img, 0, 0);
             
-            // Apply basic preprocessing for better OCR
-            // 1. Convert to grayscale
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             
             for (let i = 0; i < data.length; i += 4) {
               const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-              data[i] = avg;     // red
-              data[i + 1] = avg; // green
-              data[i + 2] = avg; // blue
+              data[i] = avg;
+              data[i + 1] = avg;
+              data[i + 2] = avg;
             }
             
             ctx.putImageData(imageData, 0, 0);
             
-            // 2. Increase contrast
             ctx.globalCompositeOperation = 'multiply';
             ctx.fillStyle = 'white';
             ctx.globalAlpha = 0.1;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Reset composite operation
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = 1.0;
             
-            // Convert to data URL
             const dataUrl = canvas.toDataURL('image/png');
             resolve(dataUrl);
           };
           
           img.onerror = () => {
-            // If preprocessing fails, fall back to original image
             resolve(URL.createObjectURL(imageFile));
           };
           
@@ -413,10 +419,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         });
       };
       
-      // Preprocess the image
       const processedImageUrl = await preprocessImage(file);
       
-      // Perform OCR on preprocessed image
       const { data } = await Tesseract.recognize(
         processedImageUrl,
         'eng',
@@ -429,7 +433,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
       );
       
-      // Check if we got meaningful text
       if (data.text.trim().length < 50) {
         sonnerToast.warning("Limited text detected in the image", {
           description: "The analysis may not be accurate"
@@ -450,7 +453,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setProcessingProgress(5);
 
     try {
-      // Extract text based on file type
       let text = '';
       let ocrUsed = false;
       
@@ -462,16 +464,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
         text = await extractTextFromImage(file);
         ocrUsed = true;
       } else if (fileType === 'presentation' || fileType === 'document') {
-        // For presentations and documents, we'll use OCR
         sonnerToast.info(`Processing ${fileType} using OCR`, {
           description: "This may take a moment"
         });
         
-        // For non-PDF files, we need to convert them to an image first
-        // This is a simplified approach - in a production app, you might
-        // use server-side processing for better conversion
         try {
-          // First attempt direct OCR on the file (might work for some file types)
           text = await extractTextFromImage(file);
         } catch (err) {
           console.error('Direct OCR failed, treating as scanned content:', err);
@@ -483,35 +480,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
         ocrUsed = true;
       }
       
-      // Check if we got enough text
       if (!text || text.trim().length < 100) {
         throw new Error(`Could not extract sufficient text from the ${fileType}. The file may contain very little text or is primarily images.`);
       }
 
-      // Pass extracted text to parent component if needed
       if (onTextExtracted) {
         onTextExtracted(text);
       }
 
       setProcessingProgress(60);
       setProcessingStage('analyzing');
-      sonnerToast.info("Analyzing content with AI...");
-      console.info("Analyzing with OpenAI:", file.name);
+      sonnerToast.info("Analyzing content with Claude...");
+      console.info("Analyzing with Claude:", file.name);
       console.info("Text length extracted:", text.length);
       console.info("OCR used:", ocrUsed);
       
-      // Analyze using OpenAI
-      const analysis = await analyzeWithOpenAI(text, file.name);
+      const analysis = await analyzeWithClaude(text, file.name);
       setProcessingProgress(95);
       
       if (analysis.parameters) {
-        // Pass the parameters to the parent component
         onFileProcessed(
           analysis.parameters, 
           analysis.explanations as Record<string, string>
         );
         
-        // Check if all parameters are zero (not a pitch deck)
         const allZeros = Object.values(analysis.parameters).every(val => val === 0);
         if (allZeros) {
           const errorMsg = "This doesn't appear to be a startup pitch deck. No relevant information was found.";
@@ -525,9 +517,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
           } else {
             sonnerToast.success("Analysis complete!");
           }
+          
+          if (user && !apiKeyProvided && freeUsageRemaining > 0) {
+            setFreeUsageRemaining(prev => Math.max(0, prev - 1));
+          }
         }
       } else {
-        // If no proper parameters were returned, assume it's not a pitch deck
         const zeroFactors: SVIFactors = {
           marketSize: 0,
           barrierToEntry: 0,
@@ -553,10 +548,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
       setProcessingProgress(100);
       setIsUploading(false);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing file:', error);
       setIsUploading(false);
       setProcessingStage('error');
+      
+      if (error.message?.includes('API key') || error.message?.includes('free analyses')) {
+        setNeedsApiKey(true);
+        setSelectedFile(file);
+        sonnerToast.error("API key required", {
+          description: error.message
+        });
+        return;
+      }
       
       const errorMessage = error instanceof Error ? error.message : 'Error analyzing file content';
       setAnalysisError(errorMessage);
@@ -564,7 +568,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
       sonnerToast.error(errorMessage);
       if (onError) onError(errorMessage);
       
-      // If analysis fails, return all zeros to indicate it's not a valid pitch deck
       const zeroFactors: SVIFactors = {
         marketSize: 0,
         barrierToEntry: 0,
@@ -629,7 +632,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       case 'extracting':
         return ocrMode ? 'Performing OCR on file...' : 'Extracting text...';
       case 'analyzing':
-        return 'Analyzing content with AI...';
+        return 'Analyzing content with Claude...';
       default:
         return 'Processing...';
     }
@@ -638,7 +641,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   if (needsApiKey) {
     return (
       <Card className="animate-fade-in p-8 mx-auto max-w-2xl">
-        <h2 className="text-lg font-semibold mb-4">API Key Required</h2>
+        <h2 className="text-lg font-semibold mb-4">Claude API Key Required</h2>
         <ApiKeyForm onApiKeySaved={handleApiKeySaved} />
         <p className="text-sm text-gray-600 mt-4">
           Selected file: {fileName} ({getFileTypeLabel()})
@@ -649,7 +652,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
-      {!apiKeyProvided && (
+      {!user && (
+        <Alert variant="info" className="mb-4">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Sign in to analyze pitch decks</AlertTitle>
+          <AlertDescription>
+            Sign in to get 3 free pitch deck analyses or to use your own Claude API key.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {user && freeUsageRemaining > 0 && !apiKeyProvided && (
+        <Alert className="mb-4 bg-green-50 border-green-200">
+          <Info className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800">Free analyses available</AlertTitle>
+          <AlertDescription className="text-green-700">
+            You have {freeUsageRemaining} free {freeUsageRemaining === 1 ? 'analysis' : 'analyses'} remaining. After that, you'll need to provide your Claude API key.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {user && freeUsageRemaining === 0 && !apiKeyProvided && (
         <div className="mb-4">
           <ApiKeyForm onApiKeySaved={() => setApiKeyProvided(true)} />
         </div>
