@@ -17,7 +17,6 @@ import {
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
 import { RefreshCcw, FileText, Globe, MapPin, Linkedin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -25,7 +24,6 @@ const Index = () => {
   const [factors, setFactors] = useState<SVIFactors>(defaultFactors);
   const [score, setScore] = useState<number>(0);
   const [calculating, setCalculating] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>('calculator');
 
   useEffect(() => {
     // Check if we have startup factors passed from another page
@@ -145,134 +143,67 @@ const Index = () => {
           </div>
         </header>
 
-        <Tabs defaultValue="calculator" className="w-full" onValueChange={setActiveTab} value={activeTab}>
-          <div className="flex justify-center mb-8">
-            <TabsList>
-              <TabsTrigger value="calculator">Calculator</TabsTrigger>
-              <TabsTrigger value="global-startups">Global Startups</TabsTrigger>
-              <TabsTrigger value="indian-startups">Indian Startups</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="calculator" className="animate-fade-in">
-            <div className="flex flex-col lg:flex-row gap-8">
-              <div className="w-full lg:w-3/4 glass-panel rounded-xl p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                  {factorKeys.map((factor) => (
-                    <SliderInput
-                      key={factor}
-                      label={getLabelForFactor(factor)}
-                      value={factors[factor]}
-                      onChange={(value) => handleFactorChange(factor, value)}
-                      infoContent={<p>{getTooltipForFactor(factor)}</p>}
-                      valueText={getFactorText(factor, factors[factor])}
-                      description={getFactorDescription(factor, factors[factor])}
-                    />
-                  ))}
-                </div>
-                
-                <div className="flex justify-between items-center mt-8">
-                  <button
-                    onClick={handleReset}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
-                  >
-                    <RefreshCcw className="w-4 h-4" />
-                    <span>Reset</span>
-                  </button>
-                </div>
+        <div className="animate-fade-in">
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="w-full lg:w-3/4 glass-panel rounded-xl p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                {factorKeys.map((factor) => (
+                  <SliderInput
+                    key={factor}
+                    label={getLabelForFactor(factor)}
+                    value={factors[factor]}
+                    onChange={(value) => handleFactorChange(factor, value)}
+                    infoContent={<p>{getTooltipForFactor(factor)}</p>}
+                    valueText={getFactorText(factor, factors[factor])}
+                    description={getFactorDescription(factor, factors[factor])}
+                  />
+                ))}
               </div>
-
-              <div className="w-full lg:w-1/4 space-y-6">
-                <ResultCard score={score} calculating={calculating} />
-                
-                <div className="glass-panel rounded-xl p-6">
-                  <h3 className="text-lg font-medium mb-4">Compare With Examples</h3>
-                  <div className="space-y-3">
-                    <StartupCard
-                      startup={startupExamples.unicorn[0]}
-                      onSelect={loadStartupExample}
-                    />
-                    <StartupCard
-                      startup={startupExamples.unicorn[1]}
-                      onSelect={loadStartupExample}
-                    />
-                    
-                    <StartupCard
-                      startup={startupExamples.medium[0]}
-                      onSelect={loadStartupExample}
-                    />
-                    
-                    <StartupCard
-                      startup={startupExamples.failed[0]}
-                      onSelect={loadStartupExample}
-                    />
-                    <StartupCard
-                      startup={startupExamples.failed[1]}
-                      onSelect={loadStartupExample}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="global-startups" className="animate-fade-in">
-            <div className="glass-panel rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-6">Global Startups</h2>
               
-              <div className="space-y-8">
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-emerald-500">Global Unicorns</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.unicorn.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-blue-500">Successful Global Startups</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.medium.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-red-500">Failed Global Startups</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {startupExamples.failed.map((startup) => (
-                      <StartupCard
-                        key={startup.name}
-                        startup={startup}
-                        onSelect={loadStartupExample}
-                      />
-                    ))}
-                  </div>
+              <div className="flex justify-between items-center mt-8">
+                <button
+                  onClick={handleReset}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full lg:w-1/4 space-y-6">
+              <ResultCard score={score} calculating={calculating} />
+              
+              <div className="glass-panel rounded-xl p-6">
+                <h3 className="text-lg font-medium mb-4">Compare With Examples</h3>
+                <div className="space-y-3">
+                  <StartupCard
+                    startup={startupExamples.unicorn[0]}
+                    onSelect={loadStartupExample}
+                  />
+                  <StartupCard
+                    startup={startupExamples.unicorn[1]}
+                    onSelect={loadStartupExample}
+                  />
+                  
+                  <StartupCard
+                    startup={startupExamples.medium[0]}
+                    onSelect={loadStartupExample}
+                  />
+                  
+                  <StartupCard
+                    startup={startupExamples.failed[0]}
+                    onSelect={loadStartupExample}
+                  />
+                  <StartupCard
+                    startup={startupExamples.failed[1]}
+                    onSelect={loadStartupExample}
+                  />
                 </div>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="indian-startups" className="animate-fade-in">
-            <Button
-              onClick={() => navigate('/indian-startups')}
-              className="w-full py-8 flex flex-col items-center justify-center gap-2"
-            >
-              <MapPin className="w-8 h-8" />
-              <span className="text-lg">View All Indian Startups</span>
-            </Button>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   );
