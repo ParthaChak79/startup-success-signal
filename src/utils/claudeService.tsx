@@ -157,8 +157,8 @@ export const ApiKeyForm: React.FC<{
       
       // If user is authenticated, also save to their profile
       if (user) {
-        // Fix for TypeScript error: Define the update data with proper type
-        const updates = {
+        // Define the update data with proper type
+        const updates: { claude_api_key: string } = {
           claude_api_key: apiKey
         };
         
