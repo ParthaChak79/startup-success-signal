@@ -40,7 +40,7 @@ const StartupDetails = () => {
   const [pitchDecks, setPitchDecks] = useState<PitchDeck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editableFactors, setEditableFactors] = useState<SVIFactors | null>(null);
+  const [editableFactors, setEditableFactors] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -134,11 +134,11 @@ const StartupDetails = () => {
 
   useEffect(() => {
     if (startup) {
-      setEditableFactors(startup.factors as SVIFactors);
+      setEditableFactors(startup.factors);
     }
   }, [startup]);
 
-  const handleFactorChange = (factor: keyof SVIFactors, value: number) => {
+  const handleFactorChange = (factor: string, value: number) => {
     if (editableFactors) {
       setEditableFactors({
         ...editableFactors,
@@ -151,7 +151,8 @@ const StartupDetails = () => {
     if (!user || !startup || !editableFactors) return;
 
     try {
-      const newScore = calculateSVI(editableFactors);
+      const completeFactors = ensureCompleteFactors(editableFactors);
+      const newScore = calculateSVI(completeFactors);
 
       const { error } = await supabase
         .from('startups')
@@ -165,11 +166,14 @@ const StartupDetails = () => {
 
       if (error) throw error;
 
-      setStartup(prev => prev ? {
-        ...prev, 
-        factors: editableFactors, 
-        score: newScore
-      } : null);
+      setStartup(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          factors: editableFactors,
+          score: newScore
+        };
+      });
 
       toast.success('Startup score updated successfully');
       setIsEditMode(false);
@@ -179,6 +183,25 @@ const StartupDetails = () => {
         description: error.message
       });
     }
+  };
+
+  const ensureCompleteFactors = (factors: Record<string, number>): SVIFactors => {
+    const defaultFactors: SVIFactors = {
+      marketSize: 0,
+      barrierToEntry: 0,
+      defensibility: 0,
+      insightFactor: 0,
+      complexity: 0,
+      riskFactor: 0,
+      teamFactor: 0,
+      marketTiming: 0,
+      competitionIntensity: 0,
+      capitalEfficiency: 0,
+      distributionAdvantage: 0,
+      businessModelViability: 0
+    };
+
+    return { ...defaultFactors, ...factors };
   };
 
   if (isLoading) {

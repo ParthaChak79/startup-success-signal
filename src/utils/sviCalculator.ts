@@ -1,3 +1,4 @@
+
 export interface SVIFactors {
   marketSize: number;
   barrierToEntry: number;
@@ -11,6 +12,7 @@ export interface SVIFactors {
   capitalEfficiency: number;
   distributionAdvantage: number;
   businessModelViability: number;
+  [key: string]: number; // Add index signature to make it compatible with Record<string, number>
 }
 
 export const calculateSVI = (factors: SVIFactors): number => {

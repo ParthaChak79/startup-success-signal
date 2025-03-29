@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast as sonnerToast } from "sonner";
 import { SVIFactors } from '@/utils/sviCalculator';
@@ -6,7 +5,6 @@ import { analyzeWithClaude } from '@/services/claude';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-// Import refactored components
 import DropZone from './file-upload/DropZone';
 import UsageStatus from './file-upload/UsageStatus';
 import ApiKeyForm from './file-upload/ApiKeyForm';
@@ -88,7 +86,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const handleClick = () => {
-    // This is delegated to the DropZone component
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,12 +211,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
       setProcessingProgress(95);
       
       if (analysis.parameters) {
+        const completeFactors: SVIFactors = {
+          marketSize: analysis.parameters.marketSize ?? 0,
+          barrierToEntry: analysis.parameters.barrierToEntry ?? 0,
+          defensibility: analysis.parameters.defensibility ?? 0,
+          insightFactor: analysis.parameters.insightFactor ?? 0,
+          complexity: analysis.parameters.complexity ?? 0,
+          riskFactor: analysis.parameters.riskFactor ?? 0,
+          teamFactor: analysis.parameters.teamFactor ?? 0,
+          marketTiming: analysis.parameters.marketTiming ?? 0,
+          competitionIntensity: analysis.parameters.competitionIntensity ?? 0,
+          capitalEfficiency: analysis.parameters.capitalEfficiency ?? 0,
+          distributionAdvantage: analysis.parameters.distributionAdvantage ?? 0,
+          businessModelViability: analysis.parameters.businessModelViability ?? 0
+        };
+        
         onFileProcessed(
-          analysis.parameters, 
+          completeFactors, 
           analysis.explanations as Record<string, string>
         );
         
-        const allZeros = Object.values(analysis.parameters).every(val => val === 0);
+        const allZeros = Object.values(completeFactors).every(val => val === 0);
         if (allZeros) {
           const errorMsg = "This doesn't appear to be a startup pitch deck. No relevant information was found.";
           setAnalysisError(errorMsg);
@@ -310,7 +322,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
-  // Render the component based on the state
   if (needsApiKey) {
     return (
       <ApiKeyForm 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,11 +50,9 @@ export const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onApiKeySaved }) => {
     setIsSubmitting(true);
     
     try {
-      const success = await saveClaudeApiKey(apiKey, user?.id);
-      if (success) {
-        setStoredKey(apiKey);
-        onApiKeySaved();
-      }
+      await saveClaudeApiKey(apiKey);
+      setStoredKey(apiKey);
+      onApiKeySaved();
     } finally {
       setIsSubmitting(false);
     }
@@ -133,3 +130,5 @@ export const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onApiKeySaved }) => {
     </Card>
   );
 };
+
+export default ApiKeyForm;
