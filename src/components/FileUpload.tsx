@@ -653,7 +653,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   return (
     <div>
       {!user && (
-        <Alert variant="info" className="mb-4">
+        <Alert variant="default" className="mb-4">
           <Info className="h-4 w-4" />
           <AlertTitle>Sign in to analyze pitch decks</AlertTitle>
           <AlertDescription>
