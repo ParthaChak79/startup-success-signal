@@ -1,18 +1,23 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { toast as sonnerToast } from "sonner";
+import { ArrowLeft, Eye, EyeOff, AlertTriangle, Save } from 'lucide-react';
 import { calculateSVI, type SVIFactors, getFactorText, getLabelForFactor, getTooltipForFactor } from '@/utils/sviCalculator';
 import ResultCard from '@/components/ResultCard';
 import PdfViewer from '@/components/PdfViewer';
 import FileUpload from '@/components/FileUpload';
 import InfoTooltip from '@/components/InfoTooltip';
+import { supabase } from '@/integrations/supabase/client';
+import StartupForm from '@/components/StartupForm';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const PitchDeckAnalysis = () => {
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuthContext();
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [factors, setFactors] = useState<SVIFactors | null>(null);
@@ -22,6 +27,21 @@ const PitchDeckAnalysis = () => {
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showStartupForm, setShowStartupForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Check authentication status
+  useEffect(() => {
+    if (!authLoading && !user && file) {
+      // Redirect to auth page if not logged in and trying to upload
+      sonnerToast.info("Please sign in to analyze pitch decks", {
+        description: "You need to be signed in to save your startup analysis"
+      });
+      navigate('/auth', { 
+        state: { returnUrl: '/pitch-deck-analysis' }
+      });
+    }
+  }, [user, authLoading, file, navigate]);
 
   const handleFileProcessed = (parameters: SVIFactors, explanationData?: Record<string, string>) => {
     setFactors(parameters);
@@ -51,6 +71,11 @@ const PitchDeckAnalysis = () => {
         ? "No pitch deck information found" 
         : `Your pitch deck has been analyzed with a SVI score of ${calculatedScore.toFixed(4)}`,
     });
+
+    // Show the form to save the startup if user is logged in and the analysis found valid information
+    if (user && !allZeros) {
+      setShowStartupForm(true);
+    }
   };
   
   const generateAnalysis = (score: number): string => {
@@ -76,6 +101,23 @@ const PitchDeckAnalysis = () => {
     const url = URL.createObjectURL(selectedFile);
     setFileUrl(url);
     setIsAnalyzing(true);
+    
+    // Check if user is logged in when they upload a file
+    if (!user && !authLoading) {
+      sonnerToast.info("Please sign in to analyze pitch decks", {
+        description: "You need to be signed in to save your startup analysis"
+      });
+      navigate('/auth', { 
+        state: { returnUrl: '/pitch-deck-analysis' }
+      });
+    }
+  };
+
+  const handleStartupSaved = () => {
+    setShowStartupForm(false);
+    sonnerToast.success("Startup saved successfully", {
+      description: "You can view all your startups in your dashboard"
+    });
   };
 
   // Check if a document is a non-pitch deck
@@ -112,6 +154,17 @@ const PitchDeckAnalysis = () => {
                 onFileSelected={handleFileSelected}
               />
             </Card>
+
+            {/* Startup Form */}
+            {showStartupForm && factors && score !== null && file && (
+              <StartupForm 
+                file={file}
+                factors={factors}
+                score={score}
+                explanations={explanations}
+                onSaved={handleStartupSaved}
+              />
+            )}
           </div>
 
           {/* Results Section */}

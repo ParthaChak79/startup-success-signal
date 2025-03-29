@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -14,12 +15,15 @@ import {
   type SVIFactors 
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
-import { RefreshCcw, FileText, Globe, MapPin, Linkedin } from 'lucide-react';
+import { RefreshCcw, FileText, Globe, MapPin, Linkedin, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuthContext } from '@/contexts/AuthContext';
+import UserMenu from '@/components/UserMenu';
 
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuthContext();
   const [factors, setFactors] = useState<SVIFactors>(defaultFactors);
   const [score, setScore] = useState<number>(0);
   const [calculating, setCalculating] = useState<boolean>(false);
@@ -98,6 +102,19 @@ const Index = () => {
           </div>
           
           <div className="absolute top-4 right-4 flex items-center space-x-4">
+            {user ? (
+              <UserMenu />
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="flex items-center gap-1"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In</span>
+              </Button>
+            )}
             <ThemeToggle />
           </div>
           
@@ -137,6 +154,16 @@ const Index = () => {
               <MapPin className="w-4 h-4" />
               Indian Startups
             </Button>
+            {user && (
+              <Button 
+                onClick={() => navigate('/my-startups')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                My Startups
+              </Button>
+            )}
           </div>
         </header>
 
