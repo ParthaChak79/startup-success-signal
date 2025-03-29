@@ -396,4 +396,3 @@ If this is not a pitch deck, set all parameters to 0.`;
     throw error;
   }
 };
-
