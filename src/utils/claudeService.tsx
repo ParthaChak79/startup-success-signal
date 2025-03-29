@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -144,19 +143,18 @@ const incrementFreeUsage = async (): Promise<void> => {
     return;
   }
   
-  // Increment free usage count
-  await supabase.rpc('increment_free_analysis_usage', {
-    user_id: session.user.id
-  }).catch(error => {
-    console.error("Failed to increment free usage:", error);
-    // Try direct update as fallback
-    supabase
-      .from('profiles')
-      .update({ 
-        free_analyses_used: supabase.rpc('get_free_analyses_used', { user_id: session.user.id }) + 1 
-      })
-      .eq('id', session.user.id);
-  });
+  // Use Supabase RPC to increment free usage count
+  try {
+    const { error } = await supabase.rpc('increment_free_analysis_usage', {
+      user_id: session.user.id
+    });
+
+    if (error) {
+      console.error("Failed to increment free usage:", error);
+    }
+  } catch (error) {
+    console.error("Error in incrementFreeUsage:", error);
+  }
 };
 
 export const analyzeWithClaude = async (text: string, fileName: string): Promise<{

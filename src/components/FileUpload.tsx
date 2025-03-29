@@ -663,7 +663,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       )}
       
       {user && freeUsageRemaining > 0 && !apiKeyProvided && (
-        <Alert className="mb-4 bg-green-50 border-green-200">
+        <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
           <Info className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">Free analyses available</AlertTitle>
           <AlertDescription className="text-green-700">
