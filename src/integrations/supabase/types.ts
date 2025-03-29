@@ -80,6 +80,7 @@ export type Database = {
           description: string | null
           factors: Json | null
           id: string
+          manually_edited: boolean | null
           name: string
           score: number | null
           scored_manually: boolean | null
@@ -91,6 +92,7 @@ export type Database = {
           description?: string | null
           factors?: Json | null
           id?: string
+          manually_edited?: boolean | null
           name: string
           score?: number | null
           scored_manually?: boolean | null
@@ -102,6 +104,7 @@ export type Database = {
           description?: string | null
           factors?: Json | null
           id?: string
+          manually_edited?: boolean | null
           name?: string
           score?: number | null
           scored_manually?: boolean | null
