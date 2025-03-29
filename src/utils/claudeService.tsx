@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -146,8 +145,7 @@ const incrementFreeUsage = async (): Promise<void> => {
   
   // Use Supabase RPC to increment free usage count
   try {
-    // Fix: Remove the explicit user_id parameter if the RPC function doesn't expect it
-    // or make sure the parameter matches what the RPC function expects
+    // Call the RPC function without any parameters since it uses auth.uid() internally
     const { error } = await supabase.rpc('increment_free_analysis_usage');
 
     if (error) {
