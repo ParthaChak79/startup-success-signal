@@ -157,9 +157,14 @@ export const ApiKeyForm: React.FC<{
       
       // If user is authenticated, also save to their profile
       if (user) {
+        // Fix for TypeScript error: Define the update data with proper type
+        const updates = {
+          claude_api_key: apiKey
+        };
+        
         const { error } = await supabase
           .from('profiles')
-          .update({ claude_api_key: apiKey })
+          .update(updates)
           .eq('id', user.id);
           
         if (error) throw error;
