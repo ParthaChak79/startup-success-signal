@@ -19,11 +19,13 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
 
   useEffect(() => {
     setPageNumber(1);
     setLoading(true);
     setError(false);
+    setRetryCount(0);
   }, [fileUrl]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -32,10 +34,19 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
     setError(false);
   };
 
-  const onDocumentLoadError = () => {
+  const onDocumentLoadError = (err: Error) => {
+    console.error("Failed to load PDF document:", fileUrl, err);
     setError(true);
     setLoading(false);
-    console.error("Failed to load PDF document:", fileUrl);
+    
+    // Only retry loading a limited number of times
+    if (retryCount < 3) {
+      setRetryCount(prev => prev + 1);
+      setTimeout(() => {
+        setLoading(true);
+        setError(false);
+      }, 1000);
+    }
   };
 
   const changePage = (offset: number) => {
@@ -52,13 +63,21 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
   const options = useMemo(() => ({
     cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
     cMapPacked: true,
-    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`
+    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+    // Enhanced options for better PDF compatibility
+    disableAutoFetch: false,
+    disableStream: false,
+    disableRange: false,
+    isEvalSupported: true,
+    maxImageSize: 1024 * 1024 * 50, // Increased max image size for scanned PDFs
+    isOffscreenCanvasSupported: true,
+    useSystemFonts: true
   }), []);
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto flex items-center justify-center relative">
-        {loading && (
+        {loading && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50">
             <Skeleton className="h-[250px] w-[180px]" />
           </div>
@@ -74,7 +93,11 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
           error={
             <div className="text-destructive text-center p-4">
               Failed to load PDF. Please try again with a different file.
-              <p className="text-sm mt-2">The PDF may be corrupted or using unsupported features.</p>
+              <p className="text-sm mt-2">
+                {retryCount >= 3 ? 
+                  "Multiple attempts to load this PDF have failed. The file may be corrupted or using unsupported features." : 
+                  "Retrying..."}
+              </p>
             </div>
           }
         >
@@ -83,8 +106,12 @@ const PdfViewer = ({ fileUrl }: PdfViewerProps) => {
               pageNumber={pageNumber}
               width={300}
               renderTextLayer={true}
-              renderAnnotationLayer={false}
+              renderAnnotationLayer={true}
               className="pdf-page"
+              error={<div className="text-destructive text-center p-2">Error loading this page</div>}
+              noData={<div className="text-muted-foreground text-center p-2">No page data</div>}
+              canvasBackground="transparent"
+              scale={1}
             />
           )}
         </Document>

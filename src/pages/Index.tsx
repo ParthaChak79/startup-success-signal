@@ -15,8 +15,9 @@ import {
   type SVIFactors 
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
-import { RefreshCcw, FileText, Globe, MapPin } from 'lucide-react';
+import { RefreshCcw, FileText, Globe, MapPin, Linkedin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const Index = () => {
   const [factors, setFactors] = useState<SVIFactors>(defaultFactors);
   const [score, setScore] = useState<number>(0);
   const [calculating, setCalculating] = useState<boolean>(false);
-  const [activeSection, setActiveSection] = useState<'calculator' | 'examples'>('calculator');
+  const [activeTab, setActiveTab] = useState<string>('calculator');
 
   useEffect(() => {
     // Check if we have startup factors passed from another page
@@ -90,6 +91,17 @@ const Index = () => {
     <div className="min-h-screen w-full bg-background text-foreground transition-colors duration-300">
       <div className="container px-4 py-8 max-w-6xl mx-auto">
         <header className="w-full flex flex-col items-center justify-center text-center mb-8 pb-8 animate-fade-in">
+          <div className="absolute top-4 left-4">
+            <a 
+              href="https://www.linkedin.com/in/chakrabortypartha/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <Linkedin size={24} />
+            </a>
+          </div>
+          
           <div className="absolute top-4 right-4 flex items-center space-x-4">
             <ThemeToggle />
           </div>
@@ -133,33 +145,16 @@ const Index = () => {
           </div>
         </header>
 
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1 rounded-lg bg-accent">
-            <button
-              className={`px-6 py-3 text-sm font-medium rounded-md transition-all ${
-                activeSection === 'calculator'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveSection('calculator')}
-            >
-              Calculator
-            </button>
-            <button
-              className={`px-6 py-3 text-sm font-medium rounded-md transition-all ${
-                activeSection === 'examples'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setActiveSection('examples')}
-            >
-              Examples
-            </button>
+        <Tabs defaultValue="calculator" className="w-full" onValueChange={setActiveTab} value={activeTab}>
+          <div className="flex justify-center mb-8">
+            <TabsList>
+              <TabsTrigger value="calculator">Calculator</TabsTrigger>
+              <TabsTrigger value="global-startups">Global Startups</TabsTrigger>
+              <TabsTrigger value="indian-startups">Indian Startups</TabsTrigger>
+            </TabsList>
           </div>
-        </div>
 
-        <div className="animate-fade-in">
-          {activeSection === 'calculator' ? (
+          <TabsContent value="calculator" className="animate-fade-in">
             <div className="flex flex-col lg:flex-row gap-8">
               <div className="w-full lg:w-3/4 glass-panel rounded-xl p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
@@ -219,50 +214,65 @@ const Index = () => {
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="glass-panel rounded-xl p-6 animate-fade-in">
-              <h2 className="text-2xl font-bold mb-6">Featured Examples</h2>
+          </TabsContent>
+
+          <TabsContent value="global-startups" className="animate-fade-in">
+            <div className="glass-panel rounded-xl p-6">
+              <h2 className="text-2xl font-bold mb-6">Global Startups</h2>
               
-              <div className="text-center mb-6">
-                <p className="text-muted-foreground mb-4">
-                  View our curated lists of startups with pre-calculated Success Index scores
-                </p>
-                <div className="flex justify-center gap-4">
-                  <Button 
-                    onClick={() => navigate('/global-startups')}
-                    className="flex items-center gap-2"
-                  >
-                    <Globe className="w-4 h-4" />
-                    Global Startups
-                  </Button>
-                  <Button 
-                    onClick={() => navigate('/indian-startups')}
-                    className="flex items-center gap-2"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Indian Startups
-                  </Button>
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-xl font-semibold mb-4 text-emerald-500">Global Unicorns</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {startupExamples.unicorn.map((startup) => (
+                      <StartupCard
+                        key={startup.name}
+                        startup={startup}
+                        onSelect={loadStartupExample}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold mb-4 text-blue-500">Successful Global Startups</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {startupExamples.medium.map((startup) => (
+                      <StartupCard
+                        key={startup.name}
+                        startup={startup}
+                        onSelect={loadStartupExample}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold mb-4 text-red-500">Failed Global Startups</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {startupExamples.failed.map((startup) => (
+                      <StartupCard
+                        key={startup.name}
+                        startup={startup}
+                        onSelect={loadStartupExample}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Featured Global Examples */}
-                <StartupCard
-                  startup={startupExamples.unicorn[0]}
-                  onSelect={loadStartupExample}
-                />
-                <StartupCard
-                  startup={startupExamples.unicorn[2]}
-                  onSelect={loadStartupExample}
-                />
-                <StartupCard
-                  startup={startupExamples.failed[0]}
-                  onSelect={loadStartupExample}
-                />
-              </div>
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="indian-startups" className="animate-fade-in">
+            <Button
+              onClick={() => navigate('/indian-startups')}
+              className="w-full py-8 flex flex-col items-center justify-center gap-2"
+            >
+              <MapPin className="w-8 h-8" />
+              <span className="text-lg">View All Indian Startups</span>
+            </Button>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
