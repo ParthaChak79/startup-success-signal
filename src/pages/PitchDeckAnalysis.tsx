@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const PitchDeckAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showStartupForm, setShowStartupForm] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null); // Added missing state variable
   const [isOcrMode, setIsOcrMode] = useState(false);
   const [isPreviewAvailable, setIsPreviewAvailable] = useState(true);
 
@@ -95,6 +97,7 @@ const PitchDeckAnalysis = () => {
   const handleFileSelected = (selectedFile: File) => {
     setFile(selectedFile);
     setUploadError(null);
+    setErrorDetails(null); // Clear error details when a new file is selected
     
     const fileType = selectedFile.type.toLowerCase();
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
@@ -133,6 +136,7 @@ const PitchDeckAnalysis = () => {
   const handleUploadError = (error: string, details?: string) => {
     setUploadError(error);
     if (details) {
+      setErrorDetails(details); // Set error details when an error occurs
       console.error('Upload error details:', details);
     }
   };
