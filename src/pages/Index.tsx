@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -26,10 +25,8 @@ const Index = () => {
   const [calculating, setCalculating] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check if we have startup factors passed from another page
     if (location.state && location.state.startupFactors) {
       setFactors(location.state.startupFactors);
-      // Clear the location state to avoid reapplying on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -94,9 +91,9 @@ const Index = () => {
               href="https://www.linkedin.com/in/chakrabortypartha/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center justify-center text-blue-600 hover:text-blue-800 transition-colors"
+              className="flex items-center justify-center bg-blue-600 rounded-full p-2 hover:bg-blue-700 transition-colors"
             >
-              <Linkedin size={24} />
+              <Linkedin color="white" size={24} />
             </a>
           </div>
           
