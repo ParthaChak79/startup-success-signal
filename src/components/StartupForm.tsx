@@ -48,13 +48,16 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
     setIsSubmitting(true);
     try {
       // Step 1: Create the startup record
+      // Convert factors to a plain object for Supabase compatibility
+      const factorsObject = { ...factors };
+      
       const { data: startup, error: startupError } = await supabase
         .from('startups')
         .insert({
           name: values.name,
           description: values.description || null,
           user_id: user.id,
-          factors,
+          factors: factorsObject,
           score,
         })
         .select()
@@ -79,17 +82,19 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
         .getPublicUrl(filePath);
 
       // Step 3: Create the pitch deck record
+      const analysisResults = {
+        factors: factorsObject,
+        score,
+        explanations: explanations || {}
+      };
+      
       const { error: pitchDeckError } = await supabase
         .from('pitch_decks')
         .insert({
           startup_id: startup.id,
           file_name: file.name,
           file_url: publicUrl.publicUrl,
-          analysis_results: {
-            factors,
-            score,
-            explanations
-          },
+          analysis_results: analysisResults,
           analysis_complete: true
         });
 

@@ -15,7 +15,7 @@ interface Startup {
   id: string;
   name: string;
   description: string | null;
-  factors: SVIFactors;
+  factors: Record<string, number>;
   score: number;
   created_at: string;
 }
@@ -25,7 +25,7 @@ interface PitchDeck {
   file_name: string;
   file_url: string;
   analysis_results: {
-    factors: SVIFactors;
+    factors: Record<string, number>;
     score: number;
     explanations?: Record<string, string>;
   };
@@ -69,7 +69,18 @@ const StartupDetails = () => {
           return;
         }
 
-        setStartup(startupData);
+        // Transform startup data to correct types
+        const transformedStartup: Startup = {
+          id: startupData.id,
+          name: startupData.name,
+          description: startupData.description,
+          // Ensure factors is a Record<string, number>
+          factors: typeof startupData.factors === 'object' ? startupData.factors : {},
+          score: startupData.score || 0,
+          created_at: startupData.created_at
+        };
+
+        setStartup(transformedStartup);
 
         // Fetch pitch decks
         const { data: pitchDeckData, error: pitchDeckError } = await supabase
@@ -79,7 +90,24 @@ const StartupDetails = () => {
           .order('created_at', { ascending: false });
 
         if (pitchDeckError) throw pitchDeckError;
-        setPitchDecks(pitchDeckData || []);
+        
+        // Transform pitch deck data
+        const transformedPitchDecks: PitchDeck[] = (pitchDeckData || []).map((deck: any) => {
+          const results = deck.analysis_results || {};
+          return {
+            id: deck.id,
+            file_name: deck.file_name,
+            file_url: deck.file_url,
+            analysis_results: {
+              factors: typeof results.factors === 'object' ? results.factors : {},
+              score: results.score || 0,
+              explanations: results.explanations || {}
+            },
+            created_at: deck.created_at
+          };
+        });
+
+        setPitchDecks(transformedPitchDecks);
 
       } catch (error: any) {
         console.error('Error fetching startup details:', error);

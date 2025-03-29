@@ -19,6 +19,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { calculateSVI } from '@/utils/sviCalculator';
+import { Database } from '@/integrations/supabase/types';
+
+type StartupRow = Database['public']['Tables']['startups']['Row'];
 
 interface Startup {
   id: string;
@@ -57,7 +60,18 @@ const MyStartups = () => {
 
         if (error) throw error;
 
-        setStartups(data || []);
+        // Transform the data to ensure types are correct
+        const transformedStartups: Startup[] = (data || []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          // Ensure factors is a Record<string, number>
+          factors: typeof row.factors === 'object' ? row.factors : {},
+          score: row.score || 0,
+          created_at: row.created_at
+        }));
+
+        setStartups(transformedStartups);
       } catch (error: any) {
         console.error('Error fetching startups:', error);
         toast.error('Failed to load startups', {
