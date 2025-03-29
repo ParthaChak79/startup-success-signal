@@ -146,9 +146,9 @@ const incrementFreeUsage = async (): Promise<void> => {
   
   // Use Supabase RPC to increment free usage count
   try {
-    // Call the RPC function that uses auth.uid() internally
-    // The function takes no parameters as it uses the authenticated user's ID
-    const { error } = await supabase.rpc('increment_free_analysis_usage', {});
+    // Don't pass any parameters to the RPC function
+    // The function will use auth.uid() internally to get the current user's ID
+    const { error } = await supabase.rpc('increment_free_analysis_usage');
 
     if (error) {
       console.error("Failed to increment free usage:", error);
