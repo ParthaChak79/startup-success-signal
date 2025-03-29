@@ -74,9 +74,14 @@ const StartupDetails = () => {
           id: startupData.id,
           name: startupData.name,
           description: startupData.description,
-          // Ensure factors is a Record<string, number>
-          factors: typeof startupData.factors === 'object' ? startupData.factors : {},
-          score: startupData.score || 0,
+          // Properly transform factors from Json to Record<string, number>
+          factors: typeof startupData.factors === 'object' && startupData.factors !== null
+            ? Object.fromEntries(
+                Object.entries(startupData.factors as Record<string, unknown>)
+                  .map(([key, value]) => [key, Number(value)])
+              )
+            : {},
+          score: Number(startupData.score) || 0,
           created_at: startupData.created_at
         };
 
@@ -94,13 +99,22 @@ const StartupDetails = () => {
         // Transform pitch deck data
         const transformedPitchDecks: PitchDeck[] = (pitchDeckData || []).map((deck: any) => {
           const results = deck.analysis_results || {};
+          
+          // Transform factors from Json to Record<string, number>
+          const transformedFactors = typeof results.factors === 'object' && results.factors !== null
+            ? Object.fromEntries(
+                Object.entries(results.factors as Record<string, unknown>)
+                  .map(([key, value]) => [key, Number(value)])
+              )
+            : {};
+            
           return {
             id: deck.id,
             file_name: deck.file_name,
             file_url: deck.file_url,
             analysis_results: {
-              factors: typeof results.factors === 'object' ? results.factors : {},
-              score: results.score || 0,
+              factors: transformedFactors,
+              score: Number(results.score) || 0,
               explanations: results.explanations || {}
             },
             created_at: deck.created_at

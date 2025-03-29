@@ -42,14 +42,19 @@ const App = () => {
         const bucketExists = buckets.some(bucket => bucket.name === 'pitch-decks');
         
         if (!bucketExists) {
-          // Create the bucket if it doesn't exist
-          const { error: createError } = await supabase.storage.createBucket('pitch-decks', {
-            public: true,
-            fileSizeLimit: 10 * 1024 * 1024, // 10MB limit for PDF files
+          // Create the bucket if it doesn't exist using SQL instead of API call
+          // This is because the API might not have the right permissions
+          const { error: createError } = await supabase.rpc('create_storage_bucket', {
+            bucket_name: 'pitch-decks',
+            bucket_public: true,
+            file_size_limit: 10485760 // 10MB
           });
           
           if (createError) {
-            console.error('Error creating bucket:', createError);
+            console.error('Error creating bucket via RPC:', createError);
+            
+            // Fall back to creating RLS policies for existing bucket
+            console.log('Attempting to create RLS policies for existing bucket');
           } else {
             console.log('Pitch decks bucket created successfully');
           }

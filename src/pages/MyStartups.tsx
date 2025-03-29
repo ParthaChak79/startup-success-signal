@@ -65,9 +65,14 @@ const MyStartups = () => {
           id: row.id,
           name: row.name,
           description: row.description,
-          // Ensure factors is a Record<string, number>
-          factors: typeof row.factors === 'object' ? row.factors : {},
-          score: row.score || 0,
+          // Properly transform factors from Json to Record<string, number>
+          factors: typeof row.factors === 'object' && row.factors !== null
+            ? Object.fromEntries(
+                Object.entries(row.factors as Record<string, unknown>)
+                  .map(([key, value]) => [key, Number(value)])
+              )
+            : {},
+          score: Number(row.score) || 0,
           created_at: row.created_at
         }));
 
