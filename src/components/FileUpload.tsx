@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast as sonnerToast } from "sonner";
 import { SVIFactors } from '@/utils/sviCalculator';
@@ -207,10 +208,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
       console.info("Text length extracted:", text.length);
       console.info("OCR used:", ocrUsed);
       
+      // Make sure to pass the actual file name to get proper analysis context
       const analysis = await analyzeWithClaude(text, file.name);
       setProcessingProgress(95);
       
       if (analysis.parameters) {
+        // Ensure all SVIFactors keys are present with proper typing
         const completeFactors: SVIFactors = {
           marketSize: analysis.parameters.marketSize ?? 0,
           barrierToEntry: analysis.parameters.barrierToEntry ?? 0,

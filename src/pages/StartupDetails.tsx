@@ -312,13 +312,13 @@ const StartupDetails = () => {
                   <div key={key} className="border-b border-border pb-3 last:border-0 last:pb-0">
                     {isEditMode ? (
                       <SliderInput 
-                        label={getLabelForFactor(key as keyof SVIFactors)}
+                        label={getLabelForFactor(key)}
                         value={value as number}
                         onChange={(newValue) => handleFactorChange(key as keyof SVIFactors, newValue)}
                         min={0}
                         max={1}
                         step={0.01}
-                        infoContent={getTooltipForFactor(key as keyof SVIFactors)}
+                        infoContent={getTooltipForFactor(key)}
                         description={getFactorText(key as keyof SVIFactors, value as number)}
                         valueText={`Current Value: ${(value as number).toFixed(2)}`}
                       />
@@ -326,8 +326,8 @@ const StartupDetails = () => {
                       <>
                         <div className="flex justify-between items-center mb-1">
                           <div className="flex items-center">
-                            <span className="font-medium">{getLabelForFactor(key as keyof SVIFactors)}</span>
-                            <InfoTooltip content={getTooltipForFactor(key as keyof SVIFactors)} />
+                            <span className="font-medium">{getLabelForFactor(key)}</span>
+                            <InfoTooltip content={getTooltipForFactor(key)} />
                           </div>
                           <span className={`font-bold ${value === 0 ? 'text-red-500' : value >= 0.7 ? 'text-green-600' : value >= 0.4 ? 'text-amber-600' : 'text-orange-600'}`}>
                             {(value as number).toFixed(2)}

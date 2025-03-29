@@ -81,9 +81,11 @@ serve(async (req) => {
       );
     }
 
-    // The prompt for Claude
+    // The prompt for Claude - adding more specific instructions to differentiate between pitch decks
     const systemPrompt = `
 You are an expert startup investor and pitch deck analyzer. Your task is to extract and analyze key information from a startup pitch deck.
+
+IMPORTANT: For each unique pitch deck, your analysis MUST be unique. Carefully analyze the specific content, startup description, business model, team, market, and competitive advantage described in this particular deck.
 
 Evaluate the document on the following parameters. For each parameter, provide a numerical score between 0 and 1, where:
 - 0 means no information was provided about this parameter
@@ -92,19 +94,21 @@ Evaluate the document on the following parameters. For each parameter, provide a
 - 0.7-0.9 means strong or compelling information
 - 1.0 means exceptionally strong information
 
+Pay attention to the SPECIFIC details of THIS pitch deck to provide an accurate analysis. Do NOT use generic scores.
+
 Parameters to evaluate:
-1. marketSize: How large is the addressable market?
-2. barrierToEntry: What barriers exist for new competitors?
-3. defensibility: How well can the startup defend against competition?
-4. insightFactor: How unique is their core insight?
-5. complexity: How complex is their solution (technical/implementation)?
-6. riskFactor: What is the overall risk profile?
-7. teamFactor: How strong and experienced is the team?
-8. marketTiming: Is the market timing optimal for this solution?
-9. competitionIntensity: How intense is the competition?
-10. capitalEfficiency: How efficiently can they convert investment into growth?
-11. distributionAdvantage: Do they have advantages in distribution/customer acquisition?
-12. businessModelViability: How viable is their business model?
+1. marketSize: How large is the addressable market for THIS specific startup?
+2. barrierToEntry: What barriers exist for new competitors in THIS specific market?
+3. defensibility: How well can THIS specific startup defend against competition?
+4. insightFactor: How unique is THIS startup's core insight?
+5. complexity: How complex is THIS specific solution (technical/implementation)?
+6. riskFactor: What is the overall risk profile for THIS specific startup?
+7. teamFactor: How strong and experienced is THIS specific team?
+8. marketTiming: Is the market timing optimal for THIS specific solution?
+9. competitionIntensity: How intense is the competition for THIS specific startup?
+10. capitalEfficiency: How efficiently can THIS startup convert investment into growth?
+11. distributionAdvantage: Does THIS startup have advantages in distribution/customer acquisition?
+12. businessModelViability: How viable is THIS startup's business model?
 
 IMPORTANT: If the document is NOT a startup pitch deck, or if it doesn't provide enough startup-related information to analyze, give ALL parameters a score of 0.
 
@@ -116,14 +120,14 @@ Filename: ${fileName || 'unknown'}
 
 Respond with a JSON object containing:
 1. "isPitchDeck": boolean - whether this document is a startup pitch deck
-2. "parameters": object with numerical scores (0-1) for all 12 parameters
+2. "parameters": object with numerical scores (0-1) for all 12 parameters 
 3. "explanation": brief explanation for each parameter score
 
 If this is not a pitch deck, set all parameters to 0.`;
 
     console.log(`Processing analysis request for file: ${fileName || 'unknown'}`);
     
-    // Call Claude API
+    // Call Claude API with improved temperature setting for more varied results
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -145,7 +149,7 @@ If this is not a pitch deck, set all parameters to 0.`;
             ]
           }
         ],
-        temperature: 0.3
+        temperature: 0.7  // Increased from 0.3 to allow for more variation in analysis
       })
     });
 
