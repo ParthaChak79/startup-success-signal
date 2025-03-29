@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, FileImage, AlertCircle, File, ZoomIn, ZoomOu
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
-// Configure PDF.js worker with a direct and explicit URL to ensure reliable loading
+// Configure PDF.js worker with a direct CDN URL to ensure reliable loading
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface PdfViewerProps {
