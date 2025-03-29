@@ -109,15 +109,28 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
           analysis_complete: true
         });
 
-      if (pitchDeckError) throw pitchDeckError;
+      if (pitchDeckError) {
+        console.error('Error creating pitch deck record:', pitchDeckError);
+        // Even if the pitch deck record fails, the startup was saved
+        toast.success('Startup saved successfully!');
+        onSaved();
+        return;
+      }
 
-      toast.success('Startup saved successfully!');
+      toast.success('Startup and pitch deck saved successfully!');
       onSaved();
     } catch (error: any) {
       console.error('Error saving startup:', error);
-      toast.error('Failed to save startup', {
-        description: error.message || 'Please try again later'
-      });
+      
+      // Check if it's a specific error we can handle better
+      if (error.message && error.message.includes('duplicate key')) {
+        toast.error('A startup with this name already exists');
+      } else {
+        // Use a more targeted error message
+        toast.error('There was a problem saving your startup', {
+          description: error.message || 'Please try again later'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
