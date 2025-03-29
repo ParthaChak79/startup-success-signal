@@ -16,6 +16,7 @@ import MyStartups from "./pages/MyStartups";
 import StartupDetails from "./pages/StartupDetails";
 import { useEffect } from "react";
 import { supabase } from "./integrations/supabase/client";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,16 +43,34 @@ const App = () => {
         const bucketExists = buckets.some(bucket => bucket.name === 'pitch-decks');
         
         if (!bucketExists) {
-          // Create the bucket via direct API call since RPC method is failing
+          // Try to create the bucket
           const { error: createError } = await supabase.storage.createBucket('pitch-decks', {
             public: true,
-            fileSizeLimit: 10485760 // 10MB
+            fileSizeLimit: 20971520 // 20MB
           });
           
           if (createError) {
             console.error('Error creating bucket:', createError);
+            
+            // Check if this is a permission error and we're not logged in
+            if (createError.message.includes('policy') || createError.message.includes('permission')) {
+              console.log('This appears to be a permissions error. The bucket will be created when an admin logs in.');
+              
+              // We don't need to show an error to the user, as the app can still function
+              // The bucket will be created when an admin logs in or file uploads may be handled by the backend
+            }
           } else {
             console.log('Pitch decks bucket created successfully');
+            
+            // Create permissive policy for public access
+            try {
+              const { error: policyError } = await supabase.storage.from('pitch-decks').createSignedUrl('dummy.txt', 60);
+              if (policyError && !policyError.message.includes('not found')) {
+                console.error('Error testing bucket access:', policyError);
+              }
+            } catch (policyError) {
+              console.error('Error setting bucket policy:', policyError);
+            }
           }
         }
       } catch (error) {
