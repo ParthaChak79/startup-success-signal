@@ -146,10 +146,8 @@ const incrementFreeUsage = async (): Promise<void> => {
   
   // Use Supabase RPC to increment free usage count
   try {
-    // Pass the user ID as an object with the correct typecasting
-    const { error } = await supabase.rpc('increment_free_analysis_usage', {
-      user_id: session.user.id as never
-    });
+    // Call the function without parameters - it will use auth.uid() internally
+    const { error } = await supabase.rpc('increment_free_analysis_usage');
 
     if (error) {
       console.error("Failed to increment free usage:", error);
@@ -226,12 +224,18 @@ If this is not a pitch deck, set all parameters to 0.`;
     let response;
     
     if (usingFreeUsage) {
+      // Get the auth token
+      const authToken = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!authToken) {
+        throw new Error('Authentication token not available. Please sign in again.');
+      }
+      
       // Use our backend service for free tier users
       response = await fetch('/api/analyze-pitch-deck', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session?.access_token
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
           text: text.substring(0, 15000),
@@ -328,14 +332,27 @@ If this is not a pitch deck, set all parameters to 0.`;
       
       if (jsonMatch && jsonMatch[1]) {
         // Extract JSON from code block
-        analysisResult = JSON.parse(jsonMatch[1]);
+        try {
+          analysisResult = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          console.error('Failed to parse JSON from code block:', e);
+          console.log('Problematic content:', jsonMatch[1]);
+          throw new Error('Invalid JSON format in Claude response');
+        }
       } else {
         // Try to parse the entire response as JSON
-        analysisResult = JSON.parse(content);
+        try {
+          analysisResult = JSON.parse(content);
+        } catch (e) {
+          console.error('Failed to parse entire response as JSON:', e);
+          console.log('Problematic content:', content);
+          throw new Error('Invalid JSON format in Claude response');
+        }
       }
       
       // Validate that we have the right structure
       if (!analysisResult || typeof analysisResult !== 'object') {
+        console.error('Invalid analysis result structure:', analysisResult);
         throw new Error('Invalid response format from Claude');
       }
       

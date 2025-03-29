@@ -30,7 +30,20 @@ serve(async (req) => {
     }
 
     // Process the request
-    const { text, fileName } = await req.json();
+    const reqData = await req.text();
+    let reqJson;
+    
+    try {
+      reqJson = JSON.parse(reqData);
+    } catch (error) {
+      console.error("Error parsing request JSON:", error, "Raw request:", reqData);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { text, fileName } = reqJson;
     
     // Validate the request
     if (!text) {
