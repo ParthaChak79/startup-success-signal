@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { SVIFactors } from '@/utils/sviCalculator';
 import * as pdfjsLib from 'pdfjs-dist';
 import { analyzeWithOpenAI, ApiKeyForm } from '@/utils/openaiService';
-import { File, Scan, FileImage, FileText, UploadIcon, AlertTriangle, FilePresentation, Info } from 'lucide-react';
+import { File, Scan, FileImage, FileText, UploadIcon, AlertTriangle, PresentationIcon, Info } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -586,7 +586,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       case 'image':
         return <FileImage className="h-16 w-16 text-primary" />;
       case 'presentation':
-        return <FilePresentation className="h-16 w-16 text-primary" />;
+        return <PresentationIcon className="h-16 w-16 text-primary" />;
       case 'document':
         return <File className="h-16 w-16 text-primary" />;
       default:
@@ -671,7 +671,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <div className="flex justify-center space-x-2">
               <FileText className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
               <FileImage className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
-              <FilePresentation className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
+              <PresentationIcon className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
             </div>
           )}
           

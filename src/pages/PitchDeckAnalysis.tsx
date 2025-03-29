@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -33,10 +32,8 @@ const PitchDeckAnalysis = () => {
   const [isOcrMode, setIsOcrMode] = useState(false);
   const [isPreviewAvailable, setIsPreviewAvailable] = useState(true);
 
-  // Check authentication status
   useEffect(() => {
     if (!authLoading && !user && file) {
-      // Redirect to auth page if not logged in and trying to upload
       sonnerToast.info("Please sign in to analyze pitch decks", {
         description: "You need to be signed in to save your startup analysis"
       });
@@ -56,10 +53,8 @@ const PitchDeckAnalysis = () => {
       setExplanations(explanationData);
     }
     
-    // Generate a simple analysis based on the score
     let analysisText = generateAnalysis(calculatedScore);
     
-    // Check if all parameters are zero, which means it's not a pitch deck
     const allZeros = Object.values(parameters).every(val => val === 0);
     if (allZeros) {
       analysisText = "This doesn't appear to be a startup pitch deck. No relevant information was found to calculate a meaningful score.";
@@ -67,7 +62,6 @@ const PitchDeckAnalysis = () => {
     
     setAnalysis(analysisText);
     
-    // Show toast with the score
     toast({
       title: "Analysis Complete",
       description: allZeros 
@@ -75,12 +69,11 @@ const PitchDeckAnalysis = () => {
         : `Your pitch deck has been analyzed with a SVI score of ${calculatedScore.toFixed(4)}`,
     });
 
-    // Show the form to save the startup if user is logged in and the analysis found valid information
     if (user && !allZeros) {
       setShowStartupForm(true);
     }
   };
-  
+
   const generateAnalysis = (score: number): string => {
     if (score >= 0.8) {
       return "Your startup has exceptional potential. The pitch deck demonstrates strong market fit, a solid business model, and impressive traction. Consider seeking significant investment to accelerate growth.";
@@ -103,7 +96,6 @@ const PitchDeckAnalysis = () => {
     setFile(selectedFile);
     setUploadError(null);
     
-    // Check if the file is a PDF for preview availability
     const fileType = selectedFile.type.toLowerCase();
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
     
@@ -119,7 +111,6 @@ const PitchDeckAnalysis = () => {
     
     setIsAnalyzing(true);
     
-    // Check if user is logged in when they upload a file
     if (!user && !authLoading) {
       sonnerToast.info("Please sign in to analyze pitch decks", {
         description: "You need to be signed in to save your startup analysis"
@@ -148,13 +139,11 @@ const PitchDeckAnalysis = () => {
     });
   };
 
-  // Check if a document is a non-pitch deck
   const isNonPitchDeck = factors && Object.values(factors).every(val => val === 0);
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <div className="container px-4 py-8 max-w-6xl mx-auto">
-        {/* Header with back button */}
         <div className="flex items-center mb-8">
           <Button 
             variant="ghost" 
@@ -168,7 +157,6 @@ const PitchDeckAnalysis = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* File Upload Section */}
           <div className="space-y-6">
             <Card className="p-6 glass-panel">
               <h2 className="text-xl font-semibold mb-4">Upload Your Pitch Deck</h2>
@@ -185,7 +173,6 @@ const PitchDeckAnalysis = () => {
               />
             </Card>
 
-            {/* Startup Form */}
             {showStartupForm && factors && score !== null && file && (
               <StartupForm 
                 file={file}
@@ -197,9 +184,7 @@ const PitchDeckAnalysis = () => {
             )}
           </div>
 
-          {/* Results Section */}
           <div className="space-y-6">
-            {/* File Upload Error */}
             {uploadError && (
               <Alert variant="destructive">
                 <FileWarning className="h-4 w-4" />
@@ -210,9 +195,8 @@ const PitchDeckAnalysis = () => {
               </Alert>
             )}
             
-            {/* File Type Warning */}
             {file && !isPreviewAvailable && (
-              <Alert variant="warning" className="bg-amber-50 text-amber-800 border-amber-200">
+              <Alert>
                 <Info className="h-4 w-4" />
                 <AlertTitle>File Preview Unavailable</AlertTitle>
                 <AlertDescription>
@@ -221,7 +205,6 @@ const PitchDeckAnalysis = () => {
               </Alert>
             )}
             
-            {/* PDF Preview (only shown if file is uploaded and is a PDF) */}
             {fileUrl && isPreviewAvailable && (
               <Card className="glass-panel overflow-hidden">
                 <div className="h-[300px]">
@@ -230,7 +213,6 @@ const PitchDeckAnalysis = () => {
               </Card>
             )}
             
-            {/* Loading indicator */}
             {isAnalyzing && (
               <Card className="p-4 glass-panel">
                 <div className="flex flex-col items-center justify-center py-6">
@@ -241,7 +223,6 @@ const PitchDeckAnalysis = () => {
               </Card>
             )}
             
-            {/* Results (only shown if analysis is completed) */}
             {score !== null && factors && !isAnalyzing && (
               <div className="space-y-4">
                 <ResultCard score={score} calculating={false} />
@@ -253,19 +234,18 @@ const PitchDeckAnalysis = () => {
                   </Card>
                 )}
                 
-                {/* Individual Parameter Scores */}
+                {isNonPitchDeck ? (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Not a Pitch Deck</AlertTitle>
+                    <AlertDescription>
+                      This document doesn't appear to be a startup pitch deck. No relevant startup information was found.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                
                 <Card className="p-4 glass-panel">
                   <h3 className="text-lg font-medium mb-4">Parameter Analysis</h3>
-                  
-                  {isNonPitchDeck ? (
-                    <Alert variant="warning" className="mb-4 bg-amber-50 text-amber-800 border-amber-200">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Not a Pitch Deck</AlertTitle>
-                      <AlertDescription>
-                        This document doesn't appear to be a startup pitch deck. No relevant startup information was found.
-                      </AlertDescription>
-                    </Alert>
-                  ) : null}
                   
                   <div className="space-y-3">
                     {Object.entries(factors).map(([key, value]) => (
