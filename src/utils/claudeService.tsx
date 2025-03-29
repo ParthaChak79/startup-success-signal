@@ -1,367 +1,63 @@
+
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { Label } from "@/components/ui/label";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { type SVIFactors } from '@/utils/sviCalculator';
 
-interface ApiKeyFormProps {
-  onApiKeySaved: () => void;
-}
-
-const formSchema = z.object({
-  apiKey: z.string().min(1, "API key is required")
-});
-
-export const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onApiKeySaved }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      apiKey: "",
-    },
-  });
-  const { user } = useAuthContext();
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      if (user) {
-        // Save API key to the user's profile in Supabase
-        const { error } = await supabase
-          .from('profiles')
-          .update({ claude_api_key: values.apiKey })
-          .eq('id', user.id);
-        
-        if (error) {
-          throw error;
-        }
-      } else {
-        // Fallback to localStorage if user is not logged in
-        localStorage.setItem('claude_api_key', values.apiKey);
-      }
-      
-      toast.success("Claude API key saved successfully");
-      onApiKeySaved();
-    } catch (error) {
-      console.error("Error saving API key:", error);
-      toast.error("Failed to save API key");
-    }
-  };
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="apiKey"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Claude API Key</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="claude-api-key..."
-                  type="password"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit">Save API Key</Button>
-        <p className="text-sm text-muted-foreground mt-2">
-          {user ? 
-            "Your API key is securely stored in your user profile." :
-            "Your API key is stored locally and never sent to our servers."}
-        </p>
-      </form>
-    </Form>
-  );
-};
-
-const getUserApiKey = async (): Promise<string | null> => {
-  // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    // Get API key from profile
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('claude_api_key')
-      .eq('id', session.user.id)
-      .single();
-    
-    if (!error && data?.claude_api_key) {
-      return data.claude_api_key;
-    }
-  }
-  
-  // Fallback to localStorage
-  return localStorage.getItem('claude_api_key');
-};
-
-const checkFreeUsage = async (): Promise<{ freeUsageAvailable: boolean, freeUsageRemaining: number }> => {
-  // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user) {
-    // If user is not authenticated, they need to sign in to use the service
-    return { freeUsageAvailable: false, freeUsageRemaining: 0 };
-  }
-  
-  // Get free usage count from profile
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('free_analyses_used')
-    .eq('id', session.user.id)
-    .single();
-  
-  if (error) {
-    console.error("Error checking free usage:", error);
-    return { freeUsageAvailable: false, freeUsageRemaining: 0 };
-  }
-  
-  const FREE_USAGE_LIMIT = 3;
-  const usedCount = data?.free_analyses_used || 0;
-  const remaining = Math.max(0, FREE_USAGE_LIMIT - usedCount);
-  
-  return { 
-    freeUsageAvailable: remaining > 0,
-    freeUsageRemaining: remaining
-  };
-};
-
-const incrementFreeUsage = async () => {
-  // Check if user is authenticated
-  const { data: sessionData } = await supabase.auth.getSession();
-  const session = sessionData.session;
-  
-  if (!session || !session.user) {
-    console.warn("Cannot increment free usage: No authenticated user");
-    return;
-  }
-  
-  // Use Supabase RPC to increment free usage count
+/**
+ * Analyze text with Claude via the Supabase Edge Function
+ */
+export const analyzeWithClaude = async (text: string, fileName?: string) => {
   try {
-    // Call the function without parameters - it will use auth.uid() internally
-    const { error } = await supabase.rpc('increment_free_analysis_usage');
-
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    
+    // Check if there's an API key in localStorage
+    const localApiKey = localStorage.getItem('claude_api_key');
+    
+    // User auth check
+    if (!session && !localApiKey) {
+      throw new Error("You need to be signed in or provide a Claude API key");
+    }
+    
+    // Prepare authentication for the edge function
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+    
+    // Call the Edge Function
+    const { data, error } = await supabase.functions.invoke('analyze-pitch-deck', {
+      body: { text, fileName },
+      headers
+    });
+    
     if (error) {
-      console.error("Failed to increment free usage:", error);
+      console.error("Edge function error:", error);
+      throw new Error(error.message || "Error analyzing with Claude");
     }
-  } catch (err) {
-    console.error("Error incrementing free usage count:", err);
-  }
-};
-
-export const analyzeWithClaude = async (text: string, fileName: string): Promise<{
-  isPitchDeck: boolean;
-  message?: string;
-  parameters: SVIFactors;
-  explanations?: Record<string, string>;
-}> => {
-  // Check free usage
-  const { freeUsageAvailable, freeUsageRemaining } = await checkFreeUsage();
-  
-  // Get API key (either from user profile or localStorage)
-  let apiKey = await getUserApiKey();
-  
-  // If no free usage available and no API key, throw error
-  if (!freeUsageAvailable && !apiKey) {
-    throw new Error('You have used all your free analyses. Please provide a Claude API key to continue.');
-  }
-  
-  // If free usage is available, don't need API key (will use our backend service)
-  const usingFreeUsage = freeUsageAvailable && !apiKey;
-  
-  try {
-    console.log('Analyzing with Claude:', fileName);
-    console.log('Text length:', text.length);
-    console.log('Using free usage:', usingFreeUsage);
     
-    const systemPrompt = `
-You are an expert startup investor and pitch deck analyzer. Your task is to extract and analyze key information from a startup pitch deck.
-
-Evaluate the document on the following parameters. For each parameter, provide a numerical score between 0 and 1, where:
-- 0 means no information was provided about this parameter
-- 0.1-0.3 means weak or minimal information
-- 0.4-0.6 means average or adequate information
-- 0.7-0.9 means strong or compelling information
-- 1.0 means exceptionally strong information
-
-Parameters to evaluate:
-1. marketSize: How large is the addressable market?
-2. barrierToEntry: What barriers exist for new competitors?
-3. defensibility: How well can the startup defend against competition?
-4. insightFactor: How unique is their core insight?
-5. complexity: How complex is their solution (technical/implementation)?
-6. riskFactor: What is the overall risk profile?
-7. teamFactor: How strong and experienced is the team?
-8. marketTiming: Is the market timing optimal for this solution?
-9. competitionIntensity: How intense is the competition?
-10. capitalEfficiency: How efficiently can they convert investment into growth?
-11. distributionAdvantage: Do they have advantages in distribution/customer acquisition?
-12. businessModelViability: How viable is their business model?
-
-IMPORTANT: If the document is NOT a startup pitch deck, or if it doesn't provide enough startup-related information to analyze, give ALL parameters a score of 0.
-
-Return a JSON object with these scores and a determination of whether this is a pitch deck.
-`;
-
-    const userPrompt = `Analyze this document: ${text.substring(0, 15000)}${text.length > 15000 ? '... (truncated)' : ''} 
-Filename: ${fileName}
-
-Respond with a JSON object containing:
-1. "isPitchDeck": boolean - whether this document is a startup pitch deck
-2. "parameters": object with numerical scores (0-1) for all 12 parameters
-3. "explanation": brief explanation for each parameter score
-
-If this is not a pitch deck, set all parameters to 0.`;
-
-    let response;
+    if (!data || !data.result) {
+      console.error("Missing result data:", data);
+      throw new Error("No result returned from analysis");
+    }
     
-    if (usingFreeUsage) {
-      // Get the auth token
-      const authToken = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!authToken) {
-        throw new Error('Authentication token not available. Please sign in again.');
-      }
-      
-      // Use our backend service for free tier users
-      response = await fetch('/api/analyze-pitch-deck', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          text: text.substring(0, 15000),
-          fileName,
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response from backend:', errorText);
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.error || 'Error analyzing with backend service');
-        } catch (parseError) {
-          // If we can't parse the error as JSON, return the raw text
-          throw new Error(`Error analyzing with backend service: ${errorText}`);
-        }
-      }
-      
-      // Increment free usage count
+    // Increment usage count for logged-in users using free analyses
+    if (session?.user && !localApiKey) {
       await incrementFreeUsage();
-      
-    } else {
-      // Use user's Claude API key
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey!,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20240620',
-          max_tokens: 4000,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `${systemPrompt}\n\n${userPrompt}`
-                }
-              ]
-            }
-          ],
-          temperature: 0.3
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response from Claude API:', errorText);
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.error?.message || 'Error calling Claude API');
-        } catch (parseError) {
-          // If we can't parse the error as JSON, return the raw text
-          throw new Error(`Error calling Claude API: ${errorText}`);
-        }
-      }
-    }
-
-    // Safely parse the response
-    let data;
-    try {
-      const responseText = await response.text();
-      console.log('Raw response:', responseText.substring(0, 200) + '...');
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Error parsing response as JSON:', parseError);
-      throw new Error('Received invalid response format from the server');
     }
     
-    // Parse the response
     try {
-      let content;
+      // Parse the result which should be a JSON string from Claude
+      const result = JSON.parse(data.result);
       
-      if (usingFreeUsage) {
-        // Our backend returns direct response
-        content = data.result;
-      } else {
-        // Claude API response format
-        content = data.content[0].text;
-      }
-      
-      console.log('Claude response:', content);
-      
-      // Try to extract JSON from the response
-      let jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                      content.match(/```\n([\s\S]*?)\n```/) ||
-                      content.match(/({[\s\S]*})/);
-                      
-      let analysisResult;
-      
-      if (jsonMatch && jsonMatch[1]) {
-        // Extract JSON from code block
-        try {
-          analysisResult = JSON.parse(jsonMatch[1]);
-        } catch (e) {
-          console.error('Failed to parse JSON from code block:', e);
-          console.log('Problematic content:', jsonMatch[1]);
-          throw new Error('Invalid JSON format in Claude response');
-        }
-      } else {
-        // Try to parse the entire response as JSON
-        try {
-          analysisResult = JSON.parse(content);
-        } catch (e) {
-          console.error('Failed to parse entire response as JSON:', e);
-          console.log('Problematic content:', content);
-          throw new Error('Invalid JSON format in Claude response');
-        }
-      }
-      
-      // Validate that we have the right structure
-      if (!analysisResult || typeof analysisResult !== 'object') {
-        console.error('Invalid analysis result structure:', analysisResult);
-        throw new Error('Invalid response format from Claude');
-      }
-      
-      // If this is not a pitch deck, return all zeros
-      if (analysisResult.isPitchDeck === false) {
+      // If not a pitch deck, return minimal info
+      if (!result.isPitchDeck) {
         return {
-          isPitchDeck: false,
-          message: "This doesn't appear to be a startup pitch deck",
           parameters: {
             marketSize: 0,
             barrierToEntry: 0,
@@ -375,66 +71,151 @@ If this is not a pitch deck, set all parameters to 0.`;
             capitalEfficiency: 0,
             distributionAdvantage: 0,
             businessModelViability: 0
+          },
+          explanations: {
+            overall: result.explanation || "This doesn't appear to be a startup pitch deck."
           }
         };
       }
       
-      // Ensure all parameters are between 0 and 1
-      const parameters = analysisResult.parameters || {};
-      Object.keys(parameters).forEach(key => {
-        parameters[key] = Math.min(1, Math.max(0, Number(parameters[key]) || 0));
-      });
-      
-      // Fill in any missing parameters with 0
-      const allFactors: SVIFactors = {
-        marketSize: parameters.marketSize || 0,
-        barrierToEntry: parameters.barrierToEntry || 0,
-        defensibility: parameters.defensibility || 0,
-        insightFactor: parameters.insightFactor || 0,
-        complexity: parameters.complexity || 0,
-        riskFactor: parameters.riskFactor || 0,
-        teamFactor: parameters.teamFactor || 0,
-        marketTiming: parameters.marketTiming || 0,
-        competitionIntensity: parameters.competitionIntensity || 0,
-        capitalEfficiency: parameters.capitalEfficiency || 0,
-        distributionAdvantage: parameters.distributionAdvantage || 0,
-        businessModelViability: parameters.businessModelViability || 0
-      };
-      
       // Extract explanations if they exist
-      const explanations = analysisResult.explanation || {};
+      const explanations: Record<string, string> = {};
+      if (result.explanations) {
+        Object.keys(result.parameters).forEach(key => {
+          explanations[key] = result.explanations[key] || '';
+        });
+      }
       
       return {
-        isPitchDeck: true,
-        parameters: allFactors,
-        explanations: explanations
+        parameters: result.parameters,
+        explanations
       };
     } catch (parseError) {
-      console.error('Error parsing Claude response:', parseError);
-      console.log('Raw response content:', data);
-      
-      // Return default values if parsing fails
-      return {
-        isPitchDeck: false,
-        message: "Failed to analyze the document properly",
-        parameters: {
-          marketSize: 0,
-          barrierToEntry: 0,
-          defensibility: 0,
-          insightFactor: 0,
-          complexity: 0,
-          riskFactor: 0,
-          teamFactor: 0,
-          marketTiming: 0,
-          competitionIntensity: 0,
-          capitalEfficiency: 0,
-          distributionAdvantage: 0,
-          businessModelViability: 0
-        }
-      };
+      console.error("Error parsing Claude response:", parseError, "Raw response:", data.result);
+      throw new Error("Error parsing Claude response. The API may be experiencing issues.");
     }
-  } catch (error) {
-    console.error('Error analyzing with Claude:', error);
+  } catch (error: any) {
+    console.error("Error in analyzeWithClaude:", error);
+    
+    // Handle specific error cases
+    if (error.message?.includes('API key')) {
+      throw new Error("Claude API key is required. Please provide a valid API key.");
+    }
+    
     throw error;
   }
+};
+
+/**
+ * Increment the user's free analysis usage count
+ */
+const incrementFreeUsage = async () => {
+  // Check if user is authenticated
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
+  
+  if (!session || !session.user) {
+    console.warn("Cannot increment free usage: No authenticated user");
+    return;
+  }
+  
+  try {
+    // Call the stored procedure to increment usage count
+    const { error } = await supabase.rpc('increment_free_analysis_usage', {
+      user_id: session.user.id
+    });
+    
+    if (error) {
+      console.error("Failed to increment free usage:", error);
+    }
+  } catch (err) {
+    console.error("Error incrementing free usage count:", err);
+  }
+};
+
+/**
+ * Form component for providing a Claude API key
+ */
+export const ApiKeyForm: React.FC<{
+  onApiKeySaved: () => void;
+}> = ({ onApiKeySaved }) => {
+  const [apiKey, setApiKey] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { user } = useAuthContext();
+  
+  const handleSave = async () => {
+    if (!apiKey.trim()) {
+      toast.error("Please enter a valid API key");
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      // Always save to localStorage for local usage
+      localStorage.setItem('claude_api_key', apiKey);
+      
+      // If user is authenticated, also save to their profile
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ claude_api_key: apiKey })
+          .eq('id', user.id);
+          
+        if (error) throw error;
+      }
+      
+      toast.success("API key saved successfully");
+      onApiKeySaved();
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      toast.error("Failed to save API key");
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  return (
+    <Card className="p-6">
+      <h2 className="text-lg font-semibold mb-4">Claude API Key Required</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Please provide your Claude API key to analyze pitch decks. Your key allows secure access to Claude's AI for pitch deck analysis.
+      </p>
+      
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="api-key">Claude API Key</Label>
+          <Input
+            id="api-key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter your Claude API key"
+            type="password"
+            autoComplete="off"
+          />
+        </div>
+        
+        <Button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="w-full"
+        >
+          {saving ? 'Saving...' : 'Save API Key'}
+        </Button>
+        
+        <p className="text-xs text-gray-500">
+          Your API key is stored securely and only used for pitch deck analysis.
+          <br />
+          <a 
+            href="https://console.anthropic.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            Get a Claude API key here
+          </a>
+        </p>
+      </div>
+    </Card>
+  );
 };

@@ -1,18 +1,18 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast as sonnerToast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { SVIFactors } from '@/utils/sviCalculator';
-import * as pdfjsLib from 'pdfjs-dist';
-import { analyzeWithClaude, ApiKeyForm } from '@/utils/claudeService';
-import { File, Scan, FileImage, FileText, UploadIcon, AlertTriangle, PresentationIcon, Info } from 'lucide-react';
-import Tesseract from 'tesseract.js';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { analyzeWithClaude } from '@/utils/claudeService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Import refactored components
+import DropZone from './file-upload/DropZone';
+import UsageStatus from './file-upload/UsageStatus';
+import ApiKeyForm from './file-upload/ApiKeyForm';
+import { validateFileContent } from './file-upload/FileValidator';
+import { extractTextFromPDF, extractTextFromImage } from './file-upload/TextExtractor';
+import { determineFileType, FileType, ProcessingStage } from '@/utils/fileUtils';
 
 interface FileUploadProps {
   onFileProcessed: (parameters: SVIFactors, explanations?: Record<string, string>) => void;
@@ -20,9 +20,6 @@ interface FileUploadProps {
   onTextExtracted?: (text: string) => void;
   onError?: (error: string, details?: string) => void;
 }
-
-type FileType = 'pdf' | 'image' | 'document' | 'presentation' | 'unknown';
-type ProcessingStage = 'idle' | 'validating' | 'extracting' | 'analyzing' | 'error' | 'complete';
 
 const FileUpload: React.FC<FileUploadProps> = ({ 
   onFileProcessed, 
@@ -43,7 +40,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>('idle');
   const [ocrMode, setOcrMode] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthContext();
   const [freeUsageRemaining, setFreeUsageRemaining] = useState<number>(0);
 
@@ -92,135 +88,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const handleClick = () => {
-    fileInputRef.current?.click();
+    // This is delegated to the DropZone component
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       processSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const determineFileType = (file: File): FileType => {
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    const mimeType = file.type.toLowerCase();
-    
-    if (mimeType.includes('pdf') || fileExtension === 'pdf') {
-      return 'pdf';
-    } else if (
-      mimeType.includes('image') || 
-      ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'].includes(fileExtension)
-    ) {
-      return 'image';
-    } else if (
-      mimeType.includes('presentation') ||
-      ['ppt', 'pptx', 'key'].includes(fileExtension)
-    ) {
-      return 'presentation';
-    } else if (
-      mimeType.includes('word') || 
-      mimeType.includes('opendocument') || 
-      mimeType.includes('text/plain') ||
-      ['doc', 'docx', 'odt', 'txt', 'rtf'].includes(fileExtension)
-    ) {
-      return 'document';
-    }
-    
-    return 'unknown';
-  };
-
-  const validateFileContent = async (file: File): Promise<{ valid: boolean; reason?: string }> => {
-    setProcessingStage('validating');
-    setProcessingProgress(5);
-    
-    if (file.size === 0) {
-      return { valid: false, reason: "The file is empty (0 bytes)" };
-    }
-    
-    if (file.size > 20 * 1024 * 1024) {
-      return { valid: false, reason: "File size exceeds the 20MB limit" };
-    }
-    
-    try {
-      const fileType = determineFileType(file);
-      
-      if (fileType === 'pdf') {
-        try {
-          const arrayBuffer = await file.arrayBuffer();
-          const dataView = new DataView(arrayBuffer);
-          const header = String.fromCharCode(dataView.getUint8(0), dataView.getUint8(1), dataView.getUint8(2), dataView.getUint8(3));
-          
-          if (header !== '%PDF') {
-            return { valid: false, reason: "This file doesn't appear to be a valid PDF. It might be corrupted or improperly exported." };
-          }
-          
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          
-          if (pdf.numPages === 0) {
-            return { valid: false, reason: "This PDF doesn't contain any pages" };
-          }
-          
-          let hasContent = false;
-          
-          for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            if (textContent.items.length > 0) {
-              hasContent = true;
-              break;
-            }
-          }
-          
-          if (!hasContent) {
-            setOcrMode(true);
-            sonnerToast.info("This PDF appears to contain scanned content", {
-              description: "We'll try to extract text using OCR technology"
-            });
-            return { valid: true };
-          }
-          
-          return { valid: true };
-        } catch (error) {
-          console.error('PDF validation error:', error);
-          return { 
-            valid: false, 
-            reason: "This PDF appears to be corrupted or improperly exported. Please check if it was correctly saved or exported from the design tool." 
-          };
-        }
-      } else if (fileType === 'image') {
-        return new Promise(resolve => {
-          const img = new Image();
-          img.onload = () => {
-            if (img.width === 0 || img.height === 0) {
-              resolve({ valid: false, reason: "This image has invalid dimensions" });
-            } else {
-              setOcrMode(true);
-              sonnerToast.info("This image requires OCR processing", {
-                description: "We'll extract text using OCR technology"
-              });
-              resolve({ valid: true });
-            }
-          };
-          img.onerror = () => {
-            resolve({ valid: false, reason: "Failed to load this image. It may be corrupted." });
-          };
-          img.src = URL.createObjectURL(file);
-        });
-      } else if (fileType === 'presentation' || fileType === 'document') {
-        setOcrMode(true);
-        sonnerToast.info(`This ${fileType === 'presentation' ? 'presentation' : 'document'} will be processed using OCR`, {
-          description: "For best results, consider converting to PDF first"
-        });
-        return { valid: true };
-      }
-      
-      return { valid: true };
-    } catch (error) {
-      console.error('File validation error:', error);
-      return { 
-        valid: false, 
-        reason: "Could not properly validate this file. It might be corrupted or in an unsupported format." 
-      };
     }
   };
 
@@ -245,7 +118,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
     
-    const validationResult = await validateFileContent(file);
+    const validationResult = await validateFileContent(file, fileTypeDetected, setOcrMode);
     if (!validationResult.valid) {
       setIsUploading(false);
       setProcessingStage('error');
@@ -281,171 +154,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     handleFile(file);
   };
 
-  const extractTextFromPDF = async (file: File): Promise<{ text: string; isOcr: boolean }> => {
-    try {
-      setProcessingStage('extracting');
-      setProcessingProgress(15);
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-      let textExtracted = false;
-      
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map((item: any) => item.str).join(' ');
-        
-        if (pageText.trim().length > 0) {
-          textExtracted = true;
-          fullText += pageText + ' ';
-        }
-        
-        setProcessingProgress(15 + Math.floor((i / pdf.numPages) * 25));
-      }
-      
-      if (textExtracted && fullText.trim().length > 50) {
-        console.log("PDF text extracted successfully without OCR");
-        return { text: fullText, isOcr: false };
-      }
-      
-      console.log("PDF text extraction yielded insufficient text, falling back to OCR");
-      sonnerToast.info("Using OCR to extract text from PDF", {
-        description: "This might take a moment"
-      });
-      
-      let ocrText = '';
-      const scale = 1.5;
-      
-      for (let i = 1; i <= pdf.numPages; i++) {
-        try {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale });
-          
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          if (!context) continue;
-          
-          await page.render({
-            canvasContext: context,
-            viewport: viewport
-          }).promise;
-          
-          const { data } = await Tesseract.recognize(
-            canvas.toDataURL('image/png'),
-            'eng',
-            {
-              logger: m => {
-                if (m.status === 'recognizing text') {
-                  const pageProgress = (i - 1) / pdf.numPages * 25;
-                  setProcessingProgress(40 + pageProgress + (m.progress * 25 / pdf.numPages));
-                }
-              }
-            }
-          );
-          
-          ocrText += data.text + ' ';
-          setProcessingProgress(40 + (i / pdf.numPages * 25));
-        } catch (err) {
-          console.warn(`OCR failed for page ${i}:`, err);
-          continue;
-        }
-      }
-      
-      return { text: ocrText, isOcr: true };
-    } catch (error) {
-      console.error('Error extracting text from PDF:', error);
-      throw new Error('Error processing PDF file: ' + (error instanceof Error ? error.message : String(error)));
-    }
-  };
-
-  const extractTextFromImage = async (file: File): Promise<string> => {
-    try {
-      setProcessingStage('extracting');
-      setProcessingProgress(20);
-      sonnerToast.info("Processing image with OCR", {
-        description: "This may take a moment"
-      });
-      
-      const preprocessImage = async (imageFile: File): Promise<string> => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) {
-              resolve(URL.createObjectURL(imageFile));
-              return;
-            }
-            
-            canvas.width = img.width;
-            canvas.height = img.height;
-            
-            ctx.drawImage(img, 0, 0);
-            
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            
-            for (let i = 0; i < data.length; i += 4) {
-              const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-              data[i] = avg;
-              data[i + 1] = avg;
-              data[i + 2] = avg;
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            ctx.globalCompositeOperation = 'multiply';
-            ctx.fillStyle = 'white';
-            ctx.globalAlpha = 0.1;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = 1.0;
-            
-            const dataUrl = canvas.toDataURL('image/png');
-            resolve(dataUrl);
-          };
-          
-          img.onerror = () => {
-            resolve(URL.createObjectURL(imageFile));
-          };
-          
-          img.src = URL.createObjectURL(imageFile);
-        });
-      };
-      
-      const processedImageUrl = await preprocessImage(file);
-      
-      const { data } = await Tesseract.recognize(
-        processedImageUrl,
-        'eng',
-        {
-          logger: m => {
-            if (m.status === 'recognizing text') {
-              setProcessingProgress(25 + Math.floor(m.progress * 25));
-            }
-          }
-        }
-      );
-      
-      if (data.text.trim().length < 50) {
-        sonnerToast.warning("Limited text detected in the image", {
-          description: "The analysis may not be accurate"
-        });
-      }
-      
-      return data.text;
-    } catch (error) {
-      console.error('Error performing OCR on image:', error);
-      throw new Error('Error processing image file: ' + (error instanceof Error ? error.message : String(error)));
-    }
-  };
-
   const handleFile = async (file: File) => {
     setIsUploading(true);
     setAnalysisError(null);
@@ -457,11 +165,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
       let ocrUsed = false;
       
       if (fileType === 'pdf') {
-        const result = await extractTextFromPDF(file);
+        const result = await extractTextFromPDF(file, setProcessingStage, setProcessingProgress);
         text = result.text;
         ocrUsed = result.isOcr;
       } else if (fileType === 'image') {
-        text = await extractTextFromImage(file);
+        text = await extractTextFromImage(file, setProcessingStage, setProcessingProgress);
         ocrUsed = true;
       } else if (fileType === 'presentation' || fileType === 'document') {
         sonnerToast.info(`Processing ${fileType} using OCR`, {
@@ -469,7 +177,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         });
         
         try {
-          text = await extractTextFromImage(file);
+          text = await extractTextFromImage(file, setProcessingStage, setProcessingProgress);
         } catch (err) {
           console.error('Direct OCR failed, treating as scanned content:', err);
           sonnerToast.error("Could not process this file format directly", {
@@ -602,164 +310,43 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
-  const getFileIcon = () => {
-    switch (fileType) {
-      case 'pdf':
-        return <FileText className="h-16 w-16 text-primary" />;
-      case 'image':
-        return <FileImage className="h-16 w-16 text-primary" />;
-      case 'presentation':
-        return <PresentationIcon className="h-16 w-16 text-primary" />;
-      case 'document':
-        return <File className="h-16 w-16 text-primary" />;
-      default:
-        return <UploadIcon className="h-16 w-16 text-gray-400" />;
-    }
-  };
-
-  const getFileTypeLabel = () => {
-    switch (fileType) {
-      case 'pdf':
-        return 'PDF Document';
-      case 'image':
-        return 'Image File';
-      case 'presentation':
-        return 'Presentation';
-      case 'document':
-        return 'Document';
-      default:
-        return 'File';
-    }
-  };
-
-  const getProcessingStageText = () => {
-    switch (processingStage) {
-      case 'validating':
-        return 'Validating file...';
-      case 'extracting':
-        return ocrMode ? 'Performing OCR on file...' : 'Extracting text...';
-      case 'analyzing':
-        return 'Analyzing content with Claude...';
-      default:
-        return 'Processing...';
-    }
-  };
-
+  // Render the component based on the state
   if (needsApiKey) {
     return (
-      <Card className="animate-fade-in p-8 mx-auto max-w-2xl">
-        <h2 className="text-lg font-semibold mb-4">Claude API Key Required</h2>
-        <ApiKeyForm onApiKeySaved={handleApiKeySaved} />
-        <p className="text-sm text-gray-600 mt-4">
-          Selected file: {fileName} ({getFileTypeLabel()})
-        </p>
-      </Card>
+      <ApiKeyForm 
+        onApiKeySaved={handleApiKeySaved} 
+        fileName={fileName} 
+        fileType={fileType}
+      />
     );
   }
 
   return (
     <div>
-      {!user && (
-        <Alert variant="default" className="mb-4">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Sign in to analyze pitch decks</AlertTitle>
-          <AlertDescription>
-            Sign in to get 3 free pitch deck analyses or to use your own Claude API key.
-          </AlertDescription>
-        </Alert>
-      )}
+      <UsageStatus 
+        user={user}
+        freeUsageRemaining={freeUsageRemaining}
+        hasClaudeApiKey={apiKeyProvided}
+        analysisError={analysisError}
+        errorDetails={errorDetails}
+        setApiKeyProvided={setApiKeyProvided}
+      />
       
-      {user && freeUsageRemaining > 0 && !apiKeyProvided && (
-        <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
-          <Info className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-800">Free analyses available</AlertTitle>
-          <AlertDescription className="text-green-700">
-            You have {freeUsageRemaining} free {freeUsageRemaining === 1 ? 'analysis' : 'analyses'} remaining. After that, you'll need to provide your Claude API key.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {user && freeUsageRemaining === 0 && !apiKeyProvided && (
-        <div className="mb-4">
-          <ApiKeyForm onApiKeySaved={() => setApiKeyProvided(true)} />
-        </div>
-      )}
-      
-      {analysisError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{analysisError}</AlertTitle>
-          {errorDetails && (
-            <AlertDescription>{errorDetails}</AlertDescription>
-          )}
-        </Alert>
-      )}
-      
-      <div 
-        className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 bg-gray-50'}`}
+      <DropZone 
+        isDragging={isDragging}
+        fileName={fileName}
+        fileSize={fileSize}
+        fileType={fileType}
+        isUploading={isUploading}
+        processingProgress={processingProgress}
+        processingStage={processingStage}
+        ocrMode={ocrMode}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onFileInputChange={handleFileChange}
         onClick={handleClick}
-      >
-        <div className="mb-4 text-center">
-          {fileName ? (
-            <>
-              {getFileIcon()}
-              <p className="text-xs text-muted-foreground mt-1">
-                {(fileSize / 1024 / 1024).toFixed(1)} MB
-              </p>
-            </>
-          ) : (
-            <div className="flex justify-center space-x-2">
-              <FileText className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
-              <FileImage className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
-              <PresentationIcon className={`h-12 w-12 transition-colors duration-200 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
-            </div>
-          )}
-          
-          <h3 className="text-lg font-medium text-gray-900 mt-4">
-            {fileName ? fileName : 'Upload your pitch deck'}
-          </h3>
-          
-          <p className="mt-1 text-sm text-gray-500">
-            Drag and drop or click to upload (PDF, Presentations, Images, Documents)
-          </p>
-        </div>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx,.txt,.rtf,.gif,.bmp,.webp,.tiff,.tif"
-          onChange={handleFileChange}
-        />
-        
-        {isUploading && (
-          <div className="w-full mb-4">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>{getProcessingStageText()}</span>
-              <span>{processingProgress}%</span>
-            </div>
-            <Progress value={processingProgress} className="h-2" />
-          </div>
-        )}
-        
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          disabled={isUploading}
-        >
-          {isUploading ? 'Processing...' : 'Select file'}
-        </Button>
-        
-        {ocrMode && fileName && !isUploading && (
-          <div className="mt-4 p-2 bg-blue-50 rounded-md flex items-center text-sm text-blue-800">
-            <Info className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>OCR was used to extract text from this file.</span>
-          </div>
-        )}
-      </div>
+      />
     </div>
   );
 };
