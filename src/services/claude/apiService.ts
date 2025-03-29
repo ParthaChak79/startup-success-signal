@@ -142,14 +142,10 @@ export const saveClaudeApiKey = async (apiKey: string, userId?: string) => {
     
     // If user ID is provided, also save to their profile
     if (userId) {
-      // Define the update data with proper type
-      const updates: { claude_api_key: string } = {
-        claude_api_key: apiKey
-      };
-      
+      // Define the update data with proper typing for the profiles table
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({ claude_api_key: apiKey })
         .eq('id', userId);
         
       if (error) throw error;
