@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { ApiKeyForm as OriginalApiKeyForm } from '@/utils/claudeService';
+import { ApiKeyForm as OriginalApiKeyForm } from '@/components/claude/ApiKeyForm';
 
 interface ApiKeyFormProps {
   onApiKeySaved: () => void;

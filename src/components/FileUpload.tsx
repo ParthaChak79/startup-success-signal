@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast as sonnerToast } from "sonner";
 import { SVIFactors } from '@/utils/sviCalculator';
-import { analyzeWithClaude } from '@/utils/claudeService';
+import { analyzeWithClaude } from '@/services/claude';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
