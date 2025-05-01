@@ -13,39 +13,38 @@ export const analyzeWithClaude = async (
   const { data: profileData } = await supabase.auth.getUser();
   const userId = profileData.user?.id;
 
-  if (!userId) {
-    throw new Error('User not authenticated');
-  }
-
-  // Check if user has API key or has free analyses left
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('claude_api_key, free_analyses_used')
-    .eq('id', userId)
-    .single();
-
-  if (profileError) {
-    console.error('Error fetching profile:', profileError);
-    throw new Error('Unable to check API key status');
-  }
-
-  // Check if user has their own API key
-  const hasApiKey = !!profile?.claude_api_key;
+  // Get API key from localStorage or from user profile
+  let claudeApiKey = localStorage.getItem('claude_api_key');
   
-  // Check if user still has free analyses
-  const freeAnalysesUsed = profile?.free_analyses_used || 0;
-  const FREE_USAGE_LIMIT = 3;
-  
-  if (!hasApiKey && freeAnalysesUsed >= FREE_USAGE_LIMIT) {
-    throw new Error('You have used all your free analyses. Please provide your Claude API key to continue.');
+  // If user is logged in, check their profile for API key as well
+  if (userId) {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('claude_api_key, free_analyses_used')
+      .eq('id', userId)
+      .single();
+
+    if (!profileError && profile?.claude_api_key) {
+      claudeApiKey = profile.claude_api_key;
+    }
+    
+    // Check if user still has free analyses
+    const freeAnalysesUsed = profile?.free_analyses_used || 0;
+    const FREE_USAGE_LIMIT = 3;
+    
+    if (!claudeApiKey && freeAnalysesUsed >= FREE_USAGE_LIMIT) {
+      throw new Error('You have used all your free analyses. Please provide your Claude API key to continue.');
+    }
+    
+    // If using free tier, increment usage count
+    if (!claudeApiKey) {
+      await incrementFreeUsage(userId);
+    }
+  } else if (!claudeApiKey) {
+    throw new Error('Please sign in to use this feature or provide a Claude API key.');
   }
 
   try {
-    // If using free tier, increment usage count
-    if (!hasApiKey) {
-      await incrementFreeUsage(userId);
-    }
-
     // Mock response for testing purposes
     // In a real implementation, this would call the Claude API
     const mockResponse: AnalysisResult = {
@@ -88,21 +87,23 @@ export const analyzeWithClaude = async (
 };
 
 export const saveClaudeApiKey = async (apiKey: string): Promise<void> => {
+  // Always save to localStorage
+  localStorage.setItem('claude_api_key', apiKey);
+  
+  // Try to save to user profile if authenticated
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
 
-  if (!userId) {
-    throw new Error('User not authenticated');
-  }
+  if (userId) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ claude_api_key: apiKey })
+      .eq('id', userId);
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ claude_api_key: apiKey })
-    .eq('id', userId);
-
-  if (error) {
-    console.error('Error saving API key:', error);
-    throw new Error('Failed to save API key');
+    if (error) {
+      console.error('Error saving API key to profile:', error);
+      // Don't throw error - we've already saved to localStorage
+    }
   }
 };
 

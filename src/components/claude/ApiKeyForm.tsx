@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { saveClaudeApiKey } from '@/services/claude/apiService';
+import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -50,9 +51,23 @@ export const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onApiKeySaved }) => {
     setIsSubmitting(true);
     
     try {
-      await saveClaudeApiKey(apiKey);
+      // Always save to localStorage
+      localStorage.setItem('claude_api_key', apiKey);
+      
+      // If user is logged in, also save to their profile
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ claude_api_key: apiKey })
+          .eq('id', user.id);
+      }
+      
       setStoredKey(apiKey);
+      toast.success("Claude API key saved successfully");
       onApiKeySaved();
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      toast.error("Error saving API key");
     } finally {
       setIsSubmitting(false);
     }
