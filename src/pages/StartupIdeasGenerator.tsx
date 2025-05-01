@@ -227,7 +227,7 @@ const StartupIdeasGenerator = () => {
                         {isGenerating ? 'Generating...' : 'Generate Startup Idea'}
                       </Button>
                     ) : (
-                      <Alert variant="warning">
+                      <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Authentication Required</AlertTitle>
                         <AlertDescription>
@@ -247,8 +247,7 @@ const StartupIdeasGenerator = () => {
 
                   {startupIdea && showStartupForm && score !== null && (
                     <StartupForm 
-                      name={startupIdea.name}
-                      description={startupIdea.description}
+                      file={new File([new Blob()], startupIdea.name + ".txt")}
                       factors={startupIdea.factors as SVIFactors}
                       score={score}
                       explanations={startupIdea.explanations}

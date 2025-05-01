@@ -37,7 +37,7 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
+      name: file.name.replace(/\.\w+$/, ''), // Use file name without extension
       description: '',
     },
   });
