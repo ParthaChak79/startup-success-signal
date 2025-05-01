@@ -1,4 +1,3 @@
-
 export interface SVIFactors {
   marketSize: number;
   barrierToEntry: number;
@@ -31,6 +30,26 @@ export const calculateSVI = (factors: SVIFactors): number => {
     businessModelViability
   } = factors;
 
+  // Adjust market timing value to create a bell curve effect
+  // This will make "optimal timing" score the highest, while "too early" and "too late" score lower
+  let adjustedMarketTiming = marketTiming;
+  if (marketTiming <= 0.2) {
+    // Significantly too early - lowest score
+    adjustedMarketTiming = 0.2;
+  } else if (marketTiming <= 0.4) {
+    // Somewhat early - lower score
+    adjustedMarketTiming = 0.5;
+  } else if (marketTiming <= 0.7) {
+    // Optimal timing - highest score (keep as is)
+    adjustedMarketTiming = marketTiming;
+  } else if (marketTiming <= 0.9) {
+    // Slightly late - lower score
+    adjustedMarketTiming = 0.5;
+  } else {
+    // Very late - lowest score
+    adjustedMarketTiming = 0.2;
+  }
+
   // Calculate weighted sum using updated equation
   const weighted_sum = (
     1.2 * marketSize +
@@ -40,7 +59,7 @@ export const calculateSVI = (factors: SVIFactors): number => {
     0.8 * (1 - complexity) +
     1.3 * (1 - riskFactor) +
     1.2 * teamFactor +
-    1.1 * marketTiming +
+    1.1 * adjustedMarketTiming +  // Use the adjusted market timing value
     0.9 * (1 - competitionIntensity) +
     1.0 * capitalEfficiency +
     1.1 * distributionAdvantage +
