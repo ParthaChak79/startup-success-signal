@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -15,10 +14,11 @@ import {
   type SVIFactors 
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
-import { RefreshCcw, FileText, Globe, MapPin, Linkedin, User } from 'lucide-react';
+import { RefreshCcw, FileText, Globe, MapPin, Linkedin, User, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -69,6 +69,10 @@ const Index = () => {
         description: `SVI Score: ${startup.score.toFixed(4)}`,
       });
     }, 400);
+  };
+
+  const navigateToExternalBlog = () => {
+    window.open('https://tactyqal.com/blog', '_blank', 'noopener,noreferrer');
   };
 
   const factorKeys: (keyof SVIFactors)[] = [
@@ -164,6 +168,18 @@ const Index = () => {
                 My Startups
               </Button>
             )}
+          </div>
+          
+          <div className="mt-6">
+            <Tabs defaultValue="calculator" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="calculator">Calculator</TabsTrigger>
+                <TabsTrigger value="blog" onClick={navigateToExternalBlog} className="flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  Startup Blog
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </header>
 
