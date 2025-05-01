@@ -138,7 +138,11 @@ const StartupDetails = () => {
     }
   }, [startup]);
 
-  const handleFactorChange = (factor: string, value: number) => {
+  const renderFactorValue = (factor: keyof SVIFactors) => {
+    return getFactorText(factor, editableFactors ? editableFactors[factor] : startup.factors[factor]);
+  };
+
+  const handleFactorChange = (factor: keyof SVIFactors, value: number) => {
     if (editableFactors) {
       setEditableFactors({
         ...editableFactors,

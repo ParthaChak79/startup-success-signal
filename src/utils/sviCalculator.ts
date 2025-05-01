@@ -1,4 +1,3 @@
-
 export interface SVIFactors {
   marketSize: number;
   barrierToEntry: number;

@@ -105,6 +105,9 @@ Parameters to evaluate:
 6. riskFactor: What is the overall risk profile for THIS specific startup?
 7. teamFactor: How strong and experienced is THIS specific team?
 8. marketTiming: Is the market timing optimal for THIS specific solution?
+   - Score highest (0.8-1.0) for optimal timing
+   - Score lower (0.4-0.7) for somewhat early or slightly late
+   - Score lowest (0-0.3) for significantly too early or very late
 9. competitionIntensity: How intense is the competition for THIS specific startup?
 10. capitalEfficiency: How efficiently can THIS startup convert investment into growth?
 11. distributionAdvantage: Does THIS startup have advantages in distribution/customer acquisition?
@@ -121,7 +124,7 @@ Filename: ${fileName || 'unknown'}
 Respond with a JSON object containing:
 1. "isPitchDeck": boolean - whether this document is a startup pitch deck
 2. "parameters": object with numerical scores (0-1) for all 12 parameters 
-3. "explanation": brief explanation for each parameter score
+3. "explanation": object with brief explanation for each parameter score
 
 If this is not a pitch deck, set all parameters to 0.`;
 
