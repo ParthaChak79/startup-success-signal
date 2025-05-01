@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 // Get API key from environment variables
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const claudeApiKey = Deno.env.get('CLAUDE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,12 +17,12 @@ serve(async (req) => {
   }
 
   // Check if API key is available before proceeding
-  if (!openAIApiKey) {
-    console.error("OpenAI API key is not configured");
+  if (!claudeApiKey) {
+    console.error("Claude API key is not configured");
     return new Response(
       JSON.stringify({
-        error: "OpenAI API key is not configured in Supabase secrets",
-        details: "Please add your OpenAI API key to the Edge Function secrets"
+        error: "Claude API key is not configured in Supabase secrets",
+        details: "Please add your Claude API key to the Edge Function secrets"
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -73,15 +73,16 @@ Format your response as a valid JSON object with these fields:
 
     console.log(`Generating startup idea with prompt: ${userPrompt}`);
     
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'x-api-key': claudeApiKey,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'claude-3-sonnet-20240229',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -94,12 +95,16 @@ Format your response as a valid JSON object with these fields:
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('OpenAI API Error:', data);
-      throw new Error(data.error?.message || 'Error calling OpenAI API');
+      console.error('Claude API Error:', data);
+      throw new Error(data.error?.message || 'Error calling Claude API');
     }
 
     // Extract the AI response
-    const aiContent = data.choices[0].message.content;
+    const aiContent = data.content && data.content[0] && data.content[0].text;
+    if (!aiContent) {
+      throw new Error('Invalid response format from Claude API');
+    }
+    
     console.log('Raw AI response:', aiContent.substring(0, 200) + '...');
     
     // Parse the JSON from the AI response
