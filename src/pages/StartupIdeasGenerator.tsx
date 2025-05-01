@@ -194,7 +194,7 @@ const StartupIdeasGenerator = () => {
                           <SelectValue placeholder="Select an industry" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Industry</SelectItem>
+                          <SelectItem value="any">Any Industry</SelectItem>
                           {industryOptions.map((option) => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -209,7 +209,7 @@ const StartupIdeasGenerator = () => {
                           <SelectValue placeholder="Select a focus" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Focus</SelectItem>
+                          <SelectItem value="any">Any Focus</SelectItem>
                           {focusOptions.map((option) => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
