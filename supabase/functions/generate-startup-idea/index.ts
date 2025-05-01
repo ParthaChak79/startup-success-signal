@@ -73,7 +73,7 @@ Format your response as a valid JSON object with these fields:
 
     console.log(`Generating startup idea with prompt: ${userPrompt}`);
     
-    // Call Claude API
+    // Call Claude API with the correct format (system as a top-level parameter)
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -83,8 +83,8 @@ Format your response as a valid JSON object with these fields:
       },
       body: JSON.stringify({
         model: 'claude-3-sonnet-20240229',
+        system: systemPrompt,  // System prompt as a top-level parameter
         messages: [
-          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
