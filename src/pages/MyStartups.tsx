@@ -6,7 +6,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash } from 'lucide-react';
+import { ArrowLeft, Plus, Trash, Lightbulb } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -140,13 +140,23 @@ const MyStartups = () => {
             <h1 className="text-3xl font-bold">My Startups</h1>
           </div>
           
-          <Button 
-            onClick={() => navigate('/pitch-deck-analysis')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Analysis
-          </Button>
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/startup-ideas-generator')}
+              className="flex items-center gap-2"
+            >
+              <Lightbulb className="h-4 w-4" />
+              Generate Ideas
+            </Button>
+            <Button 
+              onClick={() => navigate('/pitch-deck-analysis')}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Analysis
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -157,15 +167,25 @@ const MyStartups = () => {
           <div className="text-center py-16">
             <h3 className="text-xl font-semibold mb-2">No startups yet</h3>
             <p className="text-muted-foreground mb-6">
-              Upload a pitch deck or create a startup manually to get started
+              Upload a pitch deck, generate ideas, or create a startup manually to get started
             </p>
-            <Button 
-              onClick={() => navigate('/pitch-deck-analysis')}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Analysis
-            </Button>
+            <div className="flex justify-center gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/startup-ideas-generator')}
+                className="flex items-center gap-2"
+              >
+                <Lightbulb className="h-4 w-4" />
+                Generate Ideas
+              </Button>
+              <Button 
+                onClick={() => navigate('/pitch-deck-analysis')}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Analysis
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

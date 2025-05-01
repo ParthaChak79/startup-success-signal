@@ -14,6 +14,7 @@ import IndianStartups from "./pages/IndianStartups";
 import Auth from "./pages/Auth";
 import MyStartups from "./pages/MyStartups";
 import StartupDetails from "./pages/StartupDetails";
+import StartupIdeasGenerator from "./pages/StartupIdeasGenerator";
 import { useEffect } from "react";
 import { supabase } from "./integrations/supabase/client";
 import { toast } from "sonner";
@@ -97,6 +98,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/my-startups" element={<MyStartups />} />
                 <Route path="/startups/:id" element={<StartupDetails />} />
+                <Route path="/startup-ideas-generator" element={<StartupIdeasGenerator />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

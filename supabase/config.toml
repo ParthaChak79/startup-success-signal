@@ -1,1 +1,19 @@
+
 project_id = "vwdbtylahnqhxzskxftd"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[functions]
+[functions.analyze-pitch-deck]
+verify_jwt = true
+[functions.generate-startup-idea]
+verify_jwt = true
+
+[realtime]
+enabled = true
