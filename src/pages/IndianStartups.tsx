@@ -6,7 +6,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import StartupCard from '@/components/StartupCard';
 import { indianStartupExamples } from '@/data/indianStartupExamples';
 import { Button } from '@/components/ui/button';
-import { Globe } from 'lucide-react';
+import { Globe, BookOpen } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const IndianStartups = () => {
   const navigate = useNavigate();
@@ -18,6 +19,10 @@ const IndianStartups = () => {
     });
     // Navigate to the calculator with this startup's values
     navigate('/', { state: { startupFactors: startup.factors } });
+  };
+
+  const navigateToExternalBlog = () => {
+    window.open('https://tactyqal.com/blog', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -39,7 +44,7 @@ const IndianStartups = () => {
             Select any startup to load its values into the calculator.
           </p>
           
-          <div className="mt-6 flex gap-4">
+          <div className="mt-6 flex flex-col sm:flex-row gap-4 items-center">
             <Button 
               onClick={() => navigate('/')}
               variant="outline"
@@ -53,6 +58,18 @@ const IndianStartups = () => {
               <Globe className="w-4 h-4" />
               Global Startups
             </Button>
+          </div>
+
+          <div className="mt-6">
+            <Tabs defaultValue="startups" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="startups">Indian Startups</TabsTrigger>
+                <TabsTrigger value="blog" onClick={navigateToExternalBlog} className="flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  Startup Blog
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </header>
 
