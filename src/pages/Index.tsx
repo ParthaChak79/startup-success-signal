@@ -14,7 +14,7 @@ import {
   type SVIFactors 
 } from '@/utils/sviCalculator';
 import { startupExamples, defaultFactors } from '@/data/startupExamples';
-import { RefreshCcw, FileText, Globe, MapPin, Linkedin, User, BookOpen } from 'lucide-react';
+import { RefreshCcw, FileText, Globe, MapPin, Linkedin, User, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
@@ -141,6 +141,13 @@ const Index = () => {
             >
               <FileText className="w-4 h-4" />
               Upload Pitch Deck
+            </Button>
+            <Button 
+              onClick={() => navigate('/startup-ideas-generator')}
+              className="flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate Startup Ideas
             </Button>
             <Button 
               onClick={() => navigate('/global-startups')}

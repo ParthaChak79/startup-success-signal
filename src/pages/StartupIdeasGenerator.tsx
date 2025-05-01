@@ -1,362 +1,388 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { calculateSVI } from '@/utils/sviCalculator';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Sparkles, Save, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { 
-  BadgeCheck, Lightbulb, Loader2, ArrowLeft, Save, Rocket
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { SVIFactors, getLabelForFactor, getFactorText, getFactorDescription } from '@/utils/sviCalculator';
-import { ApiKeyForm } from '@/utils/openaiService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { ApiKeyForm } from '@/components/claude/ApiKeyForm';
+import { calculateSVI, SVIFactors } from '@/utils/sviCalculator';
+import StartupForm from '@/components/StartupForm';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-interface StartupIdeaResponse {
+interface StartupIdea {
   name: string;
   description: string;
   overview: string;
-  factors: SVIFactors;
+  factors: Record<string, number>;
   explanations: Record<string, string>;
 }
 
 const StartupIdeasGenerator = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuthContext();
-  const [industry, setIndustry] = useState('');
-  const [focus, setFocus] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [idea, setIdea] = useState<StartupIdeaResponse | null>(null);
+  const [industry, setIndustry] = useState<string>('');
+  const [focus, setFocus] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [startupIdea, setStartupIdea] = useState<StartupIdea | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [savingIdea, setSavingIdea] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [hasClaudeApiKey, setHasClaudeApiKey] = useState<boolean>(false);
+  const [showStartupForm, setShowStartupForm] = useState(false);
 
-  // Check if OpenAI API key is set on component mount
   useEffect(() => {
-    const checkApiKey = () => {
-      const key = localStorage.getItem('openai_api_key');
-      setApiKeyMissing(!key);
+    // Check if the user has a Claude API key
+    const checkApiKey = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('claude_api_key')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) throw error;
+        
+        // Also check for local storage key as a fallback
+        const localApiKey = localStorage.getItem('claude_api_key');
+        
+        setHasClaudeApiKey(!!(data?.claude_api_key || localApiKey));
+      } catch (err) {
+        console.error("Error checking for Claude API key:", err);
+      }
     };
+    
     checkApiKey();
-  }, []);
+  }, [user]);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth', { state: { returnUrl: '/startup-ideas-generator' } });
+  const handleGenerateIdea = async () => {
+    if (!user && !authLoading) {
+      toast.info("Please sign in to generate startup ideas");
+      navigate('/auth', { 
+        state: { returnUrl: '/startup-ideas-generator' }
+      });
+      return;
     }
-  }, [user, authLoading, navigate]);
-
-  const handleApiKeySaved = () => {
-    setApiKeyMissing(false);
-  };
-
-  const generateStartupIdea = async () => {
+    
+    if (!hasClaudeApiKey) {
+      toast.error("Claude API key required", {
+        description: "Please provide your Claude API key to generate startup ideas."
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    
     try {
-      setLoading(true);
-      setIdea(null);
-      setScore(null);
-
       const { data, error } = await supabase.functions.invoke('generate-startup-idea', {
         body: { industry, focus },
       });
-
-      if (error) throw error;
-
-      // Generate score from factors
-      const sviScore = calculateSVI(data.factors);
       
-      setIdea(data);
-      setScore(sviScore);
-    } catch (error: any) {
-      console.error('Error generating idea:', error);
-      
-      // Check for API key issues
-      if (error.message?.includes('API key')) {
-        setApiKeyMissing(true);
-        toast.error('OpenAI API Key is required', {
-          description: 'Please provide your OpenAI API key to generate ideas'
-        });
-      } else {
+      if (error) {
+        console.error('Error generating startup idea:', error);
         toast.error('Failed to generate startup idea', {
-          description: error.message || 'Please try again later'
+          description: error.message
         });
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveStartupIdea = async () => {
-    if (!idea || !user) return;
-
-    try {
-      setSavingIdea(true);
       
-      const { data: startup, error: startupError } = await supabase
-        .from('startups')
-        .insert({
-          name: idea.name,
-          description: idea.description,
-          user_id: user.id,
-          factors: idea.factors,
-          score: score || 0,
-        })
-        .select()
-        .single();
-
-      if (startupError) throw startupError;
-
-      toast.success('Startup idea saved successfully');
-      setSaveDialogOpen(false);
-      navigate(`/startups/${startup.id}`);
-    } catch (error: any) {
-      console.error('Error saving startup idea:', error);
-      toast.error('Failed to save startup idea', {
-        description: error.message || 'Please try again later'
+      if (!data) {
+        toast.error('No data received from API');
+        return;
+      }
+      
+      setStartupIdea(data);
+      
+      const calculatedScore = calculateSVI(data.factors as SVIFactors);
+      setScore(calculatedScore);
+      
+      toast.success('Startup idea generated successfully!');
+    } catch (error) {
+      console.error('Error generating startup idea:', error);
+      toast.error('Failed to generate startup idea', {
+        description: error.message
       });
     } finally {
-      setSavingIdea(false);
+      setIsGenerating(false);
     }
   };
 
-  // Get color for score
-  const getScoreColor = (score: number) => {
-    if (score >= 0.8) return "text-emerald-500";
-    if (score >= 0.6) return "text-green-500";
-    if (score >= 0.4) return "text-yellow-500";
-    if (score >= 0.2) return "text-orange-500";
-    return "text-red-500";
+  const handleApiKeySaved = () => {
+    setHasClaudeApiKey(true);
+    toast.success("Claude API key saved successfully");
   };
 
-  if (apiKeyMissing) {
-    return (
-      <div className="min-h-screen w-full bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center mb-8">
-            <Button variant="ghost" onClick={() => navigate('/')} className="mr-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Calculator
-            </Button>
-            <h1 className="text-3xl font-bold">Startup Ideas Generator</h1>
-          </div>
-          
-          <Card className="max-w-md mx-auto mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Lightbulb className="h-5 w-5 mr-2" />
-                OpenAI API Key Required
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4 text-muted-foreground">
-                To generate startup ideas, you need to provide your OpenAI API key.
-                Your key is stored locally and never sent to our servers.
-              </p>
-              <ApiKeyForm onApiKeySaved={handleApiKeySaved} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const handleSaveIdea = () => {
+    setShowStartupForm(true);
+  };
+
+  const handleStartupSaved = () => {
+    setShowStartupForm(false);
+    toast.success("Startup saved successfully", {
+      description: "You can view your startups in My Startups section"
+    });
+  };
+
+  const industryOptions = [
+    'AI & Machine Learning',
+    'Healthcare',
+    'Fintech',
+    'Education',
+    'E-commerce',
+    'Sustainability',
+    'SaaS',
+    'Hardware',
+    'Social Media',
+    'Blockchain',
+    'Agriculture',
+    'Real Estate'
+  ];
+
+  const focusOptions = [
+    'Consumer',
+    'Enterprise',
+    'B2B',
+    'B2C',
+    'Mobile',
+    'Web',
+    'IoT',
+    'Data Analytics',
+    'Automation',
+    'Marketplace'
+  ];
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen w-full bg-background text-foreground">
+      <div className="container px-4 py-8 max-w-6xl mx-auto">
         <div className="flex items-center mb-8">
-          <Button variant="ghost" onClick={() => navigate('/')} className="mr-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/')}
+            className="mr-4"
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Calculator
+            Back to Home
           </Button>
           <h1 className="text-3xl font-bold">Startup Ideas Generator</h1>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Generator Controls */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Lightbulb className="h-5 w-5 mr-2" />
-                Generate New Ideas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry (Optional)</Label>
-                <Input 
-                  id="industry" 
-                  placeholder="e.g. Fintech, Healthcare, Education" 
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card className="p-6 glass-panel">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Generate New Startup Ideas</h2>
+                <p className="text-muted-foreground mb-6">
+                  Use AI to generate innovative startup ideas that score well on all the 12 parameters
+                  of the Startup Success Index. Customize your generation by selecting an industry and focus.
+                </p>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="focus">Focus Area (Optional)</Label>
-                <Input 
-                  id="focus" 
-                  placeholder="e.g. AI, Sustainability, Remote Work" 
-                  value={focus}
-                  onChange={(e) => setFocus(e.target.value)}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full"
-                onClick={generateStartupIdea}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="mr-2 h-4 w-4" />
-                    Generate Idea
-                  </>
-                )}
-              </Button>
-            </CardFooter>
+
+              {!hasClaudeApiKey ? (
+                <ApiKeyForm onApiKeySaved={handleApiKeySaved} />
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="industry">Industry (Optional)</Label>
+                      <Select value={industry} onValueChange={setIndustry}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an industry" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Industry</SelectItem>
+                          {industryOptions.map((option) => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="focus">Focus (Optional)</Label>
+                      <Select value={focus} onValueChange={setFocus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a focus" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any Focus</SelectItem>
+                          {focusOptions.map((option) => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {user ? (
+                      <Button 
+                        className="w-full mt-4 flex items-center gap-2"
+                        onClick={handleGenerateIdea}
+                        disabled={isGenerating}
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        {isGenerating ? 'Generating...' : 'Generate Startup Idea'}
+                      </Button>
+                    ) : (
+                      <Alert variant="warning">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Authentication Required</AlertTitle>
+                        <AlertDescription>
+                          Please sign in to generate and save startup ideas.
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate('/auth', { state: { returnUrl: '/startup-ideas-generator' } })}
+                            className="ml-2"
+                          >
+                            Sign In
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+
+                  {startupIdea && showStartupForm && score !== null && (
+                    <StartupForm 
+                      name={startupIdea.name}
+                      description={startupIdea.description}
+                      factors={startupIdea.factors as SVIFactors}
+                      score={score}
+                      explanations={startupIdea.explanations}
+                      onSaved={handleStartupSaved}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </Card>
-          
-          {/* Generated Idea Display */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Your Startup Idea</span>
-                {idea && score !== null && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">SSI Score:</span>
-                    <span className={`text-xl font-bold ${getScoreColor(score)}`}>
-                      {score.toFixed(4)}
-                    </span>
-                  </div>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="py-12 flex flex-col items-center justify-center">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="mt-4 text-lg">Generating your startup idea...</p>
+
+          <div className="space-y-6">
+            {startupIdea && !showStartupForm && (
+              <Card className="p-6 glass-panel">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">{startupIdea.name}</h2>
+                  {user && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={handleSaveIdea}
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Idea
+                    </Button>
+                  )}
                 </div>
-              ) : idea ? (
-                <div className="space-y-6">
+
+                <div className="space-y-4">
                   <div>
-                    <h3 className="text-2xl font-bold">{idea.name}</h3>
-                    <p className="mt-2 text-lg">{idea.description}</p>
+                    <h3 className="text-lg font-medium mb-1">Description</h3>
+                    <p className="text-muted-foreground">{startupIdea.description}</p>
                   </div>
-                  
-                  <Separator />
-                  
+
                   <div>
-                    <h4 className="text-lg font-semibold mb-2">Overview</h4>
-                    <p>{idea.overview}</p>
+                    <h3 className="text-lg font-medium mb-1">Overview</h3>
+                    <p className="text-muted-foreground">{startupIdea.overview}</p>
                   </div>
-                  
-                  <div>
-                    <h4 className="text-lg font-semibold mb-3">Factor Analysis</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(idea.factors).map(([key, value]) => (
-                        <div key={key} className="border rounded-md p-3">
-                          <div className="flex justify-between mb-1">
-                            <span className="font-medium">{getLabelForFactor(key as keyof SVIFactors)}</span>
-                            <span className={`font-bold ${getScoreColor(value)}`}>{value.toFixed(2)}</span>
+
+                  {score !== null && (
+                    <div className="mt-4">
+                      <h3 className="text-lg font-medium mb-1">Startup Success Index Score</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              score >= 0.7
+                                ? 'bg-green-500'
+                                : score >= 0.5
+                                ? 'bg-yellow-500'
+                                : 'bg-orange-500'
+                            }`}
+                            style={{ width: `${score * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className={`font-bold ${
+                          score >= 0.7
+                            ? 'text-green-600'
+                            : score >= 0.5
+                            ? 'text-yellow-600'
+                            : 'text-orange-600'
+                        }`}>
+                          {score.toFixed(4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 border-t border-border pt-4">
+                    <h3 className="text-lg font-medium mb-3">Parameter Analysis</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                      {startupIdea && Object.entries(startupIdea.factors).map(([key, value]) => (
+                        <div key={key} className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                            <span className={`text-xs font-bold ${
+                              value >= 0.7
+                                ? 'text-green-600'
+                                : value >= 0.5
+                                ? 'text-yellow-600'
+                                : 'text-orange-600'
+                            }`}>
+                              {value.toFixed(2)}
+                            </span>
                           </div>
-                          <div className="w-full bg-secondary h-2 rounded-full">
-                            <div 
-                              className={`h-2 rounded-full ${getScoreColor(value)}`} 
+                          <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                value >= 0.7
+                                  ? 'bg-green-500'
+                                  : value >= 0.5
+                                  ? 'bg-yellow-500'
+                                  : 'bg-orange-500'
+                              }`}
                               style={{ width: `${value * 100}%` }}
                             ></div>
                           </div>
-                          <p className="text-xs mt-1 text-muted-foreground">
-                            {getFactorText(key as keyof SVIFactors, value)}
-                          </p>
-                          {idea.explanations && idea.explanations[key] && (
-                            <p className="text-sm mt-2">{idea.explanations[key]}</p>
+                          {startupIdea.explanations && startupIdea.explanations[key] && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {startupIdea.explanations[key]}
+                            </p>
                           )}
                         </div>
                       ))}
                     </div>
                   </div>
-                  
-                  <div className="flex justify-end pt-4">
-                    <Button onClick={() => setSaveDialogOpen(true)}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save to My Startups
-                    </Button>
-                  </div>
                 </div>
-              ) : (
-                <div className="py-16 text-center space-y-4">
-                  <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <p className="text-lg">Generate a new startup idea to see it here</p>
-                  <p className="text-sm text-muted-foreground">
-                    You can optionally specify an industry or focus area to guide the AI
+              </Card>
+            )}
+
+            {isGenerating && (
+              <Card className="p-6 glass-panel">
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                  <p className="text-center text-muted-foreground">Generating innovative startup idea...</p>
+                  <p className="text-center text-sm text-muted-foreground mt-2">This may take a few moments.</p>
+                </div>
+              </Card>
+            )}
+
+            {!startupIdea && !isGenerating && (
+              <Card className="p-6 glass-panel">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-medium mb-2">No Startup Idea Generated Yet</h3>
+                  <p className="text-muted-foreground">
+                    Use the form on the left to generate a new startup idea that scores well on all parameters.
                   </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </Card>
+            )}
+          </div>
         </div>
-        
-        {/* Save Dialog */}
-        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Save Startup Idea</DialogTitle>
-              <DialogDescription>
-                This will save "{idea?.name}" to your My Startups collection.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-4">
-              <p className="flex items-center">
-                <BadgeCheck className="h-5 w-5 mr-2 text-green-500" />
-                Startup details and parameters will be saved
-              </p>
-              {score !== null && (
-                <p className="mt-2 flex items-center">
-                  <BadgeCheck className="h-5 w-5 mr-2 text-green-500" />
-                  SSI Score: <span className={`font-bold ml-1 ${getScoreColor(score)}`}>{score.toFixed(4)}</span>
-                </p>
-              )}
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={saveStartupIdea} disabled={savingIdea}>
-                {savingIdea ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Startup Idea'
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
