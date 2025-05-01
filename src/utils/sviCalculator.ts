@@ -1,3 +1,4 @@
+
 export interface SVIFactors {
   marketSize: number;
   barrierToEntry: number;
@@ -114,8 +115,8 @@ export const getFactorText = (factor: keyof SVIFactors, value: number): string =
   if (factor === 'marketTiming') {
     if (value <= 0.2) return 'Significantly too early (5+ years ahead of market)';
     if (value <= 0.4) return 'Somewhat early (market emerging but adoption hurdles remain)';
-    if (value <= 0.6) return 'Optimal timing (technology, regulations, and market aligned)';
-    if (value <= 0.8) return 'Slightly late (established competition but market share available)';
+    if (value <= 0.7) return 'Optimal timing (technology, regulations, and market aligned)';
+    if (value <= 0.9) return 'Slightly late (established competition but market share available)';
     return 'Very late (market mature, dominant players established)';
   }
   
@@ -250,11 +251,11 @@ export const getFactorDescription = (factor: keyof SVIFactors, value: number): s
   }
 
   if (factor === 'marketTiming') {
-    if (value <= 0.2) return 'Market not ready, requiring extensive education.';
-    if (value <= 0.4) return 'Early stage market with adoption challenges.';
-    if (value <= 0.6) return 'Perfect timing with market readiness matching solution.';
-    if (value <= 0.8) return 'Market established but still has growth potential.';
-    return 'Mature market with established buying patterns.';
+    if (value <= 0.2) return 'Market not ready, requiring extensive education and long adoption timelines.';
+    if (value <= 0.4) return 'Early stage market with significant adoption challenges ahead.';
+    if (value <= 0.7) return 'Perfect timing with market readiness matching solution.';
+    if (value <= 0.9) return 'Market established with competitors present but growth opportunities remain.';
+    return 'Mature market with dominant players and established buying patterns.';
   }
 
   if (factor === 'competitionIntensity') {
