@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
+// Get API key from environment variables
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -13,6 +14,21 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Check if API key is available before proceeding
+  if (!openAIApiKey) {
+    console.error("OpenAI API key is not configured");
+    return new Response(
+      JSON.stringify({
+        error: "OpenAI API key is not configured in Supabase secrets",
+        details: "Please add your OpenAI API key to the Edge Function secrets"
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
+    );
   }
 
   try {
@@ -52,7 +68,7 @@ Format your response as a valid JSON object with these fields:
 `;
 
     const userPrompt = industry || focus 
-      ? `Generate a startup idea ${industry ? `in the ${industry} industry` : ""}${focus ? ` focused on ${focus}` : ""}.`
+      ? `Generate a startup idea ${industry && industry !== "any" ? `in the ${industry} industry` : ""}${focus && focus !== "any" ? ` focused on ${focus}` : ""}.`
       : "Generate an innovative startup idea that would score well across all the evaluation parameters.";
 
     console.log(`Generating startup idea with prompt: ${userPrompt}`);
@@ -106,10 +122,6 @@ Format your response as a valid JSON object with these fields:
           ideaData.factors[key] = Math.min(1, Math.max(0, Number(ideaData.factors[key]) || 0));
         });
       }
-      
-      // Calculate SVI score based on the factors
-      // (This is a simplified version - in a real-world scenario, you might want to import the actual calculation function)
-      const factors = ideaData.factors || {};
       
       // Return the ideaData
       return new Response(JSON.stringify(ideaData), {
