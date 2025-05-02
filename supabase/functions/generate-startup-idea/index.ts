@@ -35,9 +35,9 @@ serve(async (req) => {
     // Extract parameters from the request
     const { industry, focus, continent, country, timestamp } = await req.json().catch(() => ({}));
 
-    // Create the prompt for generating a startup idea
+    // Create the prompt for generating a startup idea with more emphasis on creativity and uniqueness
     const systemPrompt = `You are an expert startup advisor with deep knowledge of venture capital, market trends, and business opportunities.
-Your task is to generate innovative startup ideas that would score well on the following parameters:
+Your task is to generate HIGHLY CREATIVE and INNOVATIVE startup ideas that would score well on the following parameters:
 
 1. marketSize: How large is the addressable market? (0-1 scale)
 2. barrierToEntry: What barriers exist for new competitors? (0-1 scale)
@@ -59,6 +59,14 @@ Create a detailed startup idea that would perform well across these parameters. 
 4. Specific scores for each of the 12 parameters (on a 0-1 scale)
 5. A short explanation for each parameter score
 
+IMPORTANT INSTRUCTIONS:
+- Be bold, unconventional and think outside the box
+- Generate a COMPLETELY UNIQUE idea each time - never repeat previous ideas
+- Don't be afraid to assign varied scores across parameters (not all need to be high)
+- Consider cross-industry innovations and unexpected combinations
+- The more unique and creative the idea, the better
+- Do not follow safe or common startup patterns
+
 Format your response as a valid JSON object with these fields:
 - name: string (startup name)
 - description: string (description of the startup)
@@ -66,8 +74,7 @@ Format your response as a valid JSON object with these fields:
 - factors: object (with each parameter as a key and its score as a numeric value)
 - explanations: object (with each parameter as a key and its explanation as a string value)
 
-IMPORTANT: Be creative and generate a unique idea. Don't reuse ideas you've generated before.
-`;
+CRITICAL: Each request MUST produce a completely different idea than any you've suggested before.`;
 
     // Construct user prompt based on provided parameters
     let userPrompt = "Generate an innovative startup idea";
@@ -91,12 +98,14 @@ IMPORTANT: Be creative and generate a unique idea. Don't reuse ideas you've gene
       }
     }
     
-    // Add timestamp to ensure uniqueness
-    userPrompt += `. (Request timestamp: ${timestamp || Date.now()})`;
+    // Add randomness factors to ensure uniqueness
+    const randomFactor = Math.random().toString(36).substring(2, 15);
+    const currentTime = new Date().toISOString();
+    userPrompt += `. Make this idea completely unique and different from any previous ideas. (Request ID: ${randomFactor}, Timestamp: ${timestamp || currentTime})`;
 
     console.log(`Generating startup idea with prompt: ${userPrompt}`);
     
-    // Call Claude API with the correct format (system as a top-level parameter)
+    // Call Claude API with the correct format and increased temperature for more creativity
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -110,7 +119,7 @@ IMPORTANT: Be creative and generate a unique idea. Don't reuse ideas you've gene
         messages: [
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.9, // Increased temperature for more creativity and variety
+        temperature: 1.0, // Increased temperature for maximum creativity and variety
         max_tokens: 2000,
       }),
     });
@@ -144,10 +153,13 @@ IMPORTANT: Be creative and generate a unique idea. Don't reuse ideas you've gene
         ideaData = JSON.parse(aiContent);
       }
       
-      // Ensure all factors are numbers between 0 and 1
+      // Normalize the factors to ensure they're valid numbers between 0 and 1
+      // But allow for more variance (not just high scores)
       if (ideaData.factors) {
         Object.keys(ideaData.factors).forEach(key => {
-          ideaData.factors[key] = Math.min(1, Math.max(0, Number(ideaData.factors[key]) || 0));
+          const rawValue = Number(ideaData.factors[key]) || 0;
+          // Ensure values are between 0 and 1, but don't force them to be high
+          ideaData.factors[key] = Math.min(1, Math.max(0, rawValue));
         });
       }
       
