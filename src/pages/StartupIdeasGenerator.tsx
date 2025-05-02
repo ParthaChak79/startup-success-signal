@@ -28,6 +28,8 @@ const StartupIdeasGenerator = () => {
   const { user, isLoading: authLoading } = useAuthContext();
   const [industry, setIndustry] = useState<string>('');
   const [focus, setFocus] = useState<string>('');
+  const [continent, setContinent] = useState<string>('');
+  const [country, setCountry] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [startupIdea, setStartupIdea] = useState<StartupIdea | null>(null);
   const [score, setScore] = useState<number | null>(null);
@@ -79,8 +81,11 @@ const StartupIdeasGenerator = () => {
     setIsGenerating(true);
     
     try {
+      // Adding timestamp to ensure each request is unique for more variety
+      const timestamp = Date.now();
+      
       const { data, error } = await supabase.functions.invoke('generate-startup-idea', {
-        body: { industry, focus },
+        body: { industry, focus, continent, country, timestamp },
       });
       
       if (error) {
@@ -130,31 +135,71 @@ const StartupIdeasGenerator = () => {
 
   const industryOptions = [
     'AI & Machine Learning',
-    'Healthcare',
-    'Fintech',
-    'Education',
-    'E-commerce',
-    'Sustainability',
-    'SaaS',
-    'Hardware',
-    'Social Media',
+    'AgriTech',
+    'AR/VR',
+    'Automotive',
+    'Biotechnology',
     'Blockchain',
-    'Agriculture',
-    'Real Estate'
+    'Clean Energy',
+    'Climate Tech',
+    'Cloud Computing',
+    'Construction Tech',
+    'Cybersecurity',
+    'E-commerce',
+    'EdTech',
+    'Entertainment',
+    'Fashion Tech',
+    'Fintech',
+    'Food Tech',
+    'Gaming',
+    'Healthcare',
+    'HR Tech',
+    'IoT',
+    'Legal Tech',
+    'Logistics',
+    'Manufacturing',
+    'Marketing Tech',
+    'Mental Health',
+    'PropTech',
+    'Quantum Computing',
+    'Retail Tech',
+    'Robotics',
+    'SaaS',
+    'Social Media',
+    'Space Tech',
+    'Sports Tech',
+    'Sustainability',
+    'Telecom',
+    'Travel & Hospitality',
+    'Web3'
   ];
 
   const focusOptions = [
-    'Consumer',
-    'Enterprise',
     'B2B',
     'B2C',
-    'Mobile',
-    'Web',
-    'IoT',
-    'Data Analytics',
-    'Automation',
-    'Marketplace'
+    'B2G'
   ];
+
+  const continentOptions = [
+    'Africa',
+    'Asia',
+    'Australia/Oceania',
+    'Europe',
+    'North America',
+    'South America'
+  ];
+
+  const countryOptions = {
+    'Africa': ['Egypt', 'Kenya', 'Nigeria', 'South Africa', 'Ghana', 'Morocco', 'Ethiopia'],
+    'Asia': ['China', 'India', 'Japan', 'Singapore', 'South Korea', 'Thailand', 'Indonesia', 'Malaysia', 'Vietnam', 'UAE'],
+    'Australia/Oceania': ['Australia', 'New Zealand', 'Fiji'],
+    'Europe': ['UK', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Sweden', 'Denmark', 'Finland', 'Norway', 'Switzerland', 'Poland'],
+    'North America': ['USA', 'Canada', 'Mexico'],
+    'South America': ['Brazil', 'Argentina', 'Colombia', 'Chile', 'Peru']
+  };
+
+  // Filter countries based on selected continent
+  const availableCountries = continent ? countryOptions[continent as keyof typeof countryOptions] || [] : [];
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
@@ -178,7 +223,7 @@ const StartupIdeasGenerator = () => {
                 <h2 className="text-xl font-semibold mb-4">Generate New Startup Ideas</h2>
                 <p className="text-muted-foreground mb-6">
                   Use AI to generate innovative startup ideas that score well on all the 12 parameters
-                  of the Startup Success Index. Customize your generation by selecting an industry and focus.
+                  of the Startup Success Index. Customize your generation by selecting an industry, focus, and location.
                 </p>
               </div>
 
@@ -216,6 +261,41 @@ const StartupIdeasGenerator = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    <div>
+                      <Label htmlFor="continent">Continent (Optional)</Label>
+                      <Select value={continent} onValueChange={(value) => {
+                        setContinent(value);
+                        setCountry(''); // Reset country when continent changes
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a continent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any Continent</SelectItem>
+                          {continentOptions.map((option) => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {continent && continent !== 'any' && (
+                      <div>
+                        <Label htmlFor="country">Country (Optional)</Label>
+                        <Select value={country} onValueChange={setCountry}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a country" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any Country</SelectItem>
+                            {availableCountries.map((option) => (
+                              <SelectItem key={option} value={option}>{option}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     
                     {user ? (
                       <Button 

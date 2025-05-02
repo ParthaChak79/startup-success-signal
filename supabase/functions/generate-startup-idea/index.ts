@@ -32,8 +32,8 @@ serve(async (req) => {
   }
 
   try {
-    // Extract any specific parameters from the request
-    const { industry, focus } = await req.json().catch(() => ({}));
+    // Extract parameters from the request
+    const { industry, focus, continent, country, timestamp } = await req.json().catch(() => ({}));
 
     // Create the prompt for generating a startup idea
     const systemPrompt = `You are an expert startup advisor with deep knowledge of venture capital, market trends, and business opportunities.
@@ -65,11 +65,34 @@ Format your response as a valid JSON object with these fields:
 - overview: string (explanation of why this idea would score well)
 - factors: object (with each parameter as a key and its score as a numeric value)
 - explanations: object (with each parameter as a key and its explanation as a string value)
+
+IMPORTANT: Be creative and generate a unique idea. Don't reuse ideas you've generated before.
 `;
 
-    const userPrompt = industry || focus 
-      ? `Generate a startup idea ${industry && industry !== "any" ? `in the ${industry} industry` : ""}${focus && focus !== "any" ? ` focused on ${focus}` : ""}.`
-      : "Generate an innovative startup idea that would score well across all the evaluation parameters.";
+    // Construct user prompt based on provided parameters
+    let userPrompt = "Generate an innovative startup idea";
+    
+    // Add industry if provided
+    if (industry && industry !== "any") {
+      userPrompt += ` in the ${industry} industry`;
+    }
+    
+    // Add focus if provided
+    if (focus && focus !== "any") {
+      userPrompt += ` focused on ${focus}`;
+    }
+    
+    // Add location information if provided
+    if (continent && continent !== "any") {
+      userPrompt += ` based in ${continent}`;
+      
+      if (country && country !== "any") {
+        userPrompt += `, specifically in ${country}`;
+      }
+    }
+    
+    // Add timestamp to ensure uniqueness
+    userPrompt += `. (Request timestamp: ${timestamp || Date.now()})`;
 
     console.log(`Generating startup idea with prompt: ${userPrompt}`);
     
@@ -87,7 +110,7 @@ Format your response as a valid JSON object with these fields:
         messages: [
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
+        temperature: 0.9, // Increased temperature for more creativity and variety
         max_tokens: 2000,
       }),
     });
