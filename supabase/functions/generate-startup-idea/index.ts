@@ -16,6 +16,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('Generate startup idea function called');
+
   // Check if API key is available before proceeding
   if (!claudeApiKey) {
     console.error("Claude API key is not configured");
@@ -33,9 +35,17 @@ serve(async (req) => {
 
   try {
     // Extract parameters from the request
-    const { industry, focus, continent, country, timestamp } = await req.json().catch(() => ({}));
+    let requestBody = {};
+    try {
+      requestBody = await req.json();
+      console.log('Request body received:', requestBody);
+    } catch (jsonError) {
+      console.log('No JSON body provided, using empty object');
+    }
 
-    // Create the prompt for generating a startup idea with more emphasis on creativity and uniqueness
+    const { industry, focus, continent, country, timestamp } = requestBody;
+
+    // Create the prompt for generating a startup idea with maximum creativity
     const systemPrompt = `You are an expert startup advisor with deep knowledge of venture capital, market trends, and business opportunities.
 Your task is to generate HIGHLY CREATIVE and INNOVATIVE startup ideas that would score well on the following parameters:
 
@@ -60,12 +70,15 @@ Create a detailed startup idea that would perform well across these parameters. 
 5. A short explanation for each parameter score
 
 IMPORTANT INSTRUCTIONS:
-- Be bold, unconventional and think outside the box
+- Be extremely bold, unconventional and think outside the box
 - Generate a COMPLETELY UNIQUE idea each time - never repeat previous ideas
-- Don't be afraid to assign varied scores across parameters (not all need to be high)
+- Use widely varied scores across parameters (some high, some medium, some low - make it realistic)
 - Consider cross-industry innovations and unexpected combinations
+- Think of problems that don't have obvious solutions yet
+- Combine emerging technologies in novel ways
 - The more unique and creative the idea, the better
 - Do not follow safe or common startup patterns
+- Be willing to suggest risky but potentially revolutionary ideas
 
 Format your response as a valid JSON object with these fields:
 - name: string (startup name)
@@ -74,10 +87,10 @@ Format your response as a valid JSON object with these fields:
 - factors: object (with each parameter as a key and its score as a numeric value)
 - explanations: object (with each parameter as a key and its explanation as a string value)
 
-CRITICAL: Each request MUST produce a completely different idea than any you've suggested before.`;
+CRITICAL: Each request MUST produce a completely different idea than any you've suggested before. Think of the most unexpected startup ideas possible.`;
 
     // Construct user prompt based on provided parameters
-    let userPrompt = "Generate an innovative startup idea";
+    let userPrompt = "Generate an extremely innovative and unique startup idea";
     
     // Add industry if provided
     if (industry && industry !== "any") {
@@ -98,15 +111,16 @@ CRITICAL: Each request MUST produce a completely different idea than any you've 
       }
     }
     
-    // Add randomness factors to ensure uniqueness
+    // Add maximum randomness factors to ensure uniqueness
     const randomFactor = Math.random().toString(36).substring(2, 15);
+    const randomSeed = Math.floor(Math.random() * 1000000);
     const currentTime = new Date().toISOString();
-    userPrompt += `. Make this idea completely unique and different from any previous ideas. (Request ID: ${randomFactor}, Timestamp: ${timestamp || currentTime})`;
+    userPrompt += `. Make this idea completely unique, unexpected, and different from any previous ideas. Think of the most unconventional startup concepts. (Request ID: ${randomFactor}, Seed: ${randomSeed}, Timestamp: ${timestamp || currentTime})`;
 
-    console.log(`Generating startup idea with prompt: ${userPrompt}`);
+    console.log(`Generating startup idea with prompt: ${userPrompt.substring(0, 100)}...`);
     
-    // Call Claude API with the correct format and increased temperature for more creativity
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call Claude API with maximum temperature for creativity
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': claudeApiKey,
@@ -115,29 +129,34 @@ CRITICAL: Each request MUST produce a completely different idea than any you've 
       },
       body: JSON.stringify({
         model: 'claude-3-sonnet-20240229',
-        system: systemPrompt,  // System prompt as a top-level parameter
+        system: systemPrompt,
         messages: [
           { role: 'user', content: userPrompt }
         ],
-        temperature: 1.0, // Increased temperature for maximum creativity and variety
-        max_tokens: 2000,
+        temperature: 1.0, // Maximum temperature for maximum creativity and variety
+        max_tokens: 2500,
       }),
     });
 
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error('Claude API Error:', data);
-      throw new Error(data.error?.message || 'Error calling Claude API');
+    console.log('Claude API response status:', claudeResponse.status);
+
+    if (!claudeResponse.ok) {
+      const errorData = await claudeResponse.text();
+      console.error('Claude API Error:', errorData);
+      throw new Error(`Claude API error: ${claudeResponse.status} - ${errorData}`);
     }
 
+    const data = await claudeResponse.json();
+    console.log('Claude API response received');
+    
     // Extract the AI response
     const aiContent = data.content && data.content[0] && data.content[0].text;
     if (!aiContent) {
+      console.error('Invalid response format from Claude API:', JSON.stringify(data));
       throw new Error('Invalid response format from Claude API');
     }
     
-    console.log('Raw AI response:', aiContent.substring(0, 200) + '...');
+    console.log('Raw AI response length:', aiContent.length);
     
     // Parse the JSON from the AI response
     let ideaData;
@@ -154,14 +173,16 @@ CRITICAL: Each request MUST produce a completely different idea than any you've 
       }
       
       // Normalize the factors to ensure they're valid numbers between 0 and 1
-      // But allow for more variance (not just high scores)
+      // Allow for realistic variance in scores
       if (ideaData.factors) {
         Object.keys(ideaData.factors).forEach(key => {
           const rawValue = Number(ideaData.factors[key]) || 0;
-          // Ensure values are between 0 and 1, but don't force them to be high
+          // Ensure values are between 0 and 1, but allow natural variance
           ideaData.factors[key] = Math.min(1, Math.max(0, rawValue));
         });
       }
+      
+      console.log('Successfully parsed startup idea:', ideaData.name);
       
       // Return the ideaData
       return new Response(JSON.stringify(ideaData), {
@@ -170,8 +191,13 @@ CRITICAL: Each request MUST produce a completely different idea than any you've 
       
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
+      console.error('AI response content:', aiContent.substring(0, 500));
       return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response', details: parseError.message }),
+        JSON.stringify({ 
+          error: 'Failed to parse AI response', 
+          details: parseError.message,
+          rawResponse: aiContent.substring(0, 200) + '...'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -179,7 +205,10 @@ CRITICAL: Each request MUST produce a completely different idea than any you've 
   } catch (error) {
     console.error('Error in generate-startup-idea function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error occurred',
+        details: error.stack || 'No stack trace available'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
