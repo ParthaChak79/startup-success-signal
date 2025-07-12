@@ -88,32 +88,6 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
       const fileName = `${Date.now()}-${file.name}`;
       const filePath = `${user.id}/${startup.id}/${fileName}`;
 
-      // Check if the bucket exists first
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw new Error('Could not access storage');
-      }
-      
-      const bucketExists = buckets.some(bucket => bucket.name === 'pitch-decks');
-      
-      if (!bucketExists) {
-        // Try to create the bucket if it doesn't exist
-        console.log('Bucket does not exist, attempting to create it');
-        const { error: createBucketError } = await supabase.storage
-          .createBucket('pitch-decks', {
-            public: true,
-            fileSizeLimit: 20971520 // 20MB
-          });
-          
-        if (createBucketError) {
-          console.error('Error creating bucket:', createBucketError);
-          setIsBucketError(true);
-          throw new Error('Unable to create storage bucket. This is likely a permissions issue. Your startup has been saved, but the file could not be uploaded.');
-        }
-      }
-
       const { error: uploadError } = await supabase.storage
         .from('pitch-decks')
         .upload(filePath, file, {
@@ -124,8 +98,14 @@ const StartupForm = ({ file, factors, score, explanations, onSaved }: StartupFor
       if (uploadError) {
         console.error('Error uploading file:', uploadError);
         
-        // Check for specific error types
-        if (uploadError.message.includes('bucket') || uploadError.message.includes('policy')) {
+        // Check if bucket doesn't exist
+        if (uploadError.message.includes('bucket') || uploadError.message.includes('not found')) {
+          setIsBucketError(true);
+          throw new Error('Storage bucket "pitch-decks" does not exist. Please contact an administrator to create the storage bucket. Your startup has been saved, but the file could not be uploaded.');
+        }
+        
+        // Check for policy/permission issues
+        if (uploadError.message.includes('policy') || uploadError.message.includes('permission')) {
           setIsBucketError(true);
           throw new Error('Storage permission issue. Your startup has been saved, but the file could not be uploaded.');
         }
